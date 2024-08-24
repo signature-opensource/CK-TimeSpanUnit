@@ -4,8 +4,21 @@ using System;
 
 namespace CK.Core.Tests
 {
+
     public class UnitPathPartTests
     {
+        [TestCase( TimeSpanUnitPathPart.None, "2024-08-23T16-42-54.374" )]
+        [TestCase( TimeSpanUnitPathPart.Semester, "2024/S2-08-23T16-42-54.374" )]
+        [TestCase( TimeSpanUnitPathPart.InlineSemester, "2024-S2-08-23T16-42-54.374" )]
+        [TestCase( TimeSpanUnitPathPart.InlineQuarter | TimeSpanUnitPathPart.Month, "2024-Q3/08-23T16-42-54.374" )]
+        [TestCase( TimeSpanUnitPathPart.Month | TimeSpanUnitPathPart.Day | TimeSpanUnitPathPart.Hour | TimeSpanUnitPathPart.Minute, "2024/08/23/16/42-54.374" )]
+        [TestCase( TimeSpanUnitPathPart.Day | TimeSpanUnitPathPart.Hour, "2024/D236/16-42-54.374" )]
+        public void Samples_up_to_Millisecond( TimeSpanUnitPathPart parts, string expected )
+        {
+            DateTime t = new DateTime( 2024, 08, 23, 16, 42, 54, 374 );
+            parts.GetPath( t, TimeSpanUnit.Millisecond ).Should().Be( expected );
+        }
+
         [TestCase( TimeSpanUnit.Year, "2024" )]
         [TestCase( TimeSpanUnit.Semester, "2024-S2" )]
         [TestCase( TimeSpanUnit.Quarter, "2024-Q3" )]
@@ -21,6 +34,7 @@ namespace CK.Core.Tests
             var s = TimeSpanUnitPathPart.None.GetPath( t, upTo );
             s.Should().Be( expected );
         }
+
 
         [TestCase( TimeSpanUnit.Year, "2024" )]
         [TestCase( TimeSpanUnit.Semester, "2024/S2" )]
@@ -117,6 +131,22 @@ namespace CK.Core.Tests
         {
             DateTime t = new DateTime( 1, 2, 3, 4, 5, 6, 7 );
             var s = (TimeSpanUnitPathPart.Day | TimeSpanUnitPathPart.Hour).GetPath( t, upTo );
+            s.Should().Be( expected );
+        }
+
+        [TestCase( TimeSpanUnit.Year, "9999" )]
+        [TestCase( TimeSpanUnit.Semester, "9999-S2" )]
+        [TestCase( TimeSpanUnit.Quarter, "9999-Q4" )]
+        [TestCase( TimeSpanUnit.Month, "9999/12" )]
+        [TestCase( TimeSpanUnit.Day, "9999/12/31" )]
+        [TestCase( TimeSpanUnit.Hour, "9999/12/31/23" )]
+        [TestCase( TimeSpanUnit.Minute, "9999/12/31/23/59" )]
+        [TestCase( TimeSpanUnit.Second, "9999/12/31/23/59-59" )]
+        [TestCase( TimeSpanUnit.Millisecond, "9999/12/31/23/59-59.999" )]
+        public void MonthDayHourMinute_GetPath_samples( TimeSpanUnit upTo, string expected )
+        {
+            DateTime t = DateTime.MaxValue;
+            var s = (TimeSpanUnitPathPart.Month | TimeSpanUnitPathPart.Day | TimeSpanUnitPathPart.Hour | TimeSpanUnitPathPart.Minute).GetPath( t, upTo );
             s.Should().Be( expected );
         }
 

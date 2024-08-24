@@ -10,12 +10,19 @@ public static class TimeSpanUnitPathPartExtensions
 {
     /// <summary>
     /// Gets the <paramref name="instant"/> as a path up to the <see cref="TimeSpanUnit"/> part.
+    /// <para>
+    /// This path always starts with the 4-digits year followed by '-' or '/'.
+    /// </para>
+    /// <para>
+    /// This <paramref name="parts"/> defines the components that must appear as a folder in the path
+    /// and the <paramref name="upTo"/> is the precision of the path.
+    /// </para>
     /// </summary>
     /// <param name="parts">This parts.</param>
     /// <param name="instant">The <see cref="DateTime"/> that must be obtained as a path.</param>
     /// <param name="upTo">The most precise unit to obtain. Cannot be <see cref="TimeSpanUnit.None"/>.</param>
     /// <returns>The <see cref="DateTime"/> expressed as a path.</returns>
-    public static string GetPath( this TimeSpanUnitPathPart parts, DateTime instant, TimeSpanUnit upTo )
+    public static string GetPath( this TimeSpanUnitPathPart parts, DateTime instant, TimeSpanUnit upTo = TimeSpanUnit.Millisecond )
     {
         Throw.CheckArgument( upTo != TimeSpanUnit.None );
         Throw.DebugAssert( upTo >= TimeSpanUnit.Year );
@@ -26,6 +33,13 @@ public static class TimeSpanUnitPathPartExtensions
 
     /// <summary>
     /// Writes the <paramref name="instant"/> as a path up to the <see cref="TimeSpanUnit"/> part.
+    /// <para>
+    /// This path always starts with the 4-digits year followed by '-' or '/'.
+    /// </para>
+    /// <para>
+    /// This <paramref name="parts"/> defines the components that must appear as a folder in the path
+    /// and the <paramref name="upTo"/> is the precision of the path.
+    /// </para>
     /// </summary>
     /// <param name="parts">This parts.</param>
     /// <param name="b">The target string builder.</param>
@@ -36,7 +50,7 @@ public static class TimeSpanUnitPathPartExtensions
     public static void WritePath( this TimeSpanUnitPathPart parts,
                                   StringBuilder b,
                                   DateTime instant,
-                                  TimeSpanUnit upTo,
+                                  TimeSpanUnit upTo = TimeSpanUnit.Millisecond,
                                   char hourInlineSeparator = 'T',
                                   char millisecondInlineSeparator = '.' )
     {
