@@ -30,6 +30,7 @@ public readonly partial struct WeakTimeSpan
     /// Tries to parse <paramref name="s"/> into a value.
     /// </summary>
     /// <param name="s">The characters to parse.</param>
+    /// <param name="result">The parsed result.</param>
     /// <remarks>
     /// "None" (or even "None:0" or "None:xxx") is allowed: <paramref name="result"/> can be NOT <see cref="WeakTimeSpan.IsValid"/>
     /// even if this returns true.

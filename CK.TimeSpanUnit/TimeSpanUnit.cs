@@ -27,6 +27,7 @@ public enum TimeSpanUnit : byte
     /// Non applicable.
     /// </summary>
     None = 0,
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
     Year,
     Semester,
     Quarter,
@@ -36,4 +37,5 @@ public enum TimeSpanUnit : byte
     Minute,
     Second,
     Millisecond
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }
