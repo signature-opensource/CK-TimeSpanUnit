@@ -8,9 +8,9 @@ namespace CK.Core;
 /// It is NOT (and cannot be converted to) an actual <see cref="TimeSpan"/>. 
 /// </para>
 /// </summary>
-public readonly struct WeakTimeSpan : ISpanParsable<WeakTimeSpan>
+public readonly partial struct WeakTimeSpan : ISpanParsable<WeakTimeSpan>
 {
-    readonly int _count;
+    readonly long _count;
     readonly TimeSpanUnit _unit;
 
     /// <summary>
@@ -21,7 +21,7 @@ public readonly struct WeakTimeSpan : ISpanParsable<WeakTimeSpan>
     /// </summary>
     /// <param name="unit">The time span unit. Must not be <see cref="TimeSpanUnit.None"/>.</param>
     /// <param name="count">The count of unit. Must be positive.</param>
-    public WeakTimeSpan( TimeSpanUnit unit, int count = 1 )
+    public WeakTimeSpan( TimeSpanUnit unit, long count = 1 )
     {
         Throw.CheckArgument( unit != TimeSpanUnit.None );
         Throw.CheckOutOfRangeArgument( count > 0 );
@@ -32,7 +32,7 @@ public readonly struct WeakTimeSpan : ISpanParsable<WeakTimeSpan>
     /// <summary>
     /// Gets the count of unit. This is 0 or positive.
     /// </summary>
-    public int Count => _count;
+    public long Count => _count;
 
     /// <summary>
     /// Gets the time span unit.
@@ -57,8 +57,7 @@ public readonly struct WeakTimeSpan : ISpanParsable<WeakTimeSpan>
     /// <returns>This or a new span if it has been normalized.</returns>
     public WeakTimeSpan Normalize( bool ignoreSemester = false, bool ignoreQuarter = false )
     {
-        int q;
-        int r;
+        long q, r;
         switch( _unit )
         {
             case TimeSpanUnit.Millisecond:
@@ -110,84 +109,12 @@ public readonly struct WeakTimeSpan : ISpanParsable<WeakTimeSpan>
         return this;
     }
 
+
+
     /// <summary>
     /// Gets the "Unit:Count" representation of this span.
     /// </summary>
     /// <returns>The string representation.</returns>
     public override string ToString() => $"{_unit.ToStringFast()}:{_count}";
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// "None" (or even "None:0" or "None:xxx") is allowed: the returned value <see cref="WeakTimeSpan.IsValid"/> CAN BE false.
-    /// </remarks>
-    public static WeakTimeSpan Parse( ReadOnlySpan<char> s, IFormatProvider? provider ) => TryParse( s, provider, out var result ) ? result : Throw.FormatException<WeakTimeSpan>();
-
-    /// <summary>
-    /// Parses a span into a value.
-    /// </summary>
-    /// <param name="s">The characters to parse.</param>
-    /// <remarks>
-    /// "None" (or even "None:0" or "None:xxx") is allowed: the returned value <see cref="WeakTimeSpan.IsValid"/> CAN BE false.
-    /// </remarks>
-    /// <returns>The result of parsing s.</returns>
-    public static WeakTimeSpan Parse( ReadOnlySpan<char> s ) => Parse( s, null );
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// "None" (or even "None:0" or "None:xxx") is allowed: the returned value <see cref="WeakTimeSpan.IsValid"/> CAN BE false.
-    /// </remarks>
-    public static WeakTimeSpan Parse( string s, IFormatProvider? provider ) => Parse( s.AsSpan(), provider );
-
-    /// <summary>
-    /// Tries to parse <paramref name="s"/> into a value.
-    /// </summary>
-    /// <param name="s">The characters to parse.</param>
-    /// <remarks>
-    /// "None" (or even "None:0" or "None:xxx") is allowed: <paramref name="result"/> can be NOT <see cref="WeakTimeSpan.IsValid"/>
-    /// even if this returns true.
-    /// </remarks>
-    /// <returns>true if s was successfully parsed; otherwise, false.</returns>
-    public static bool TryParse( string? s, out WeakTimeSpan result ) => TryParse( s.AsSpan(), null, out result );
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// "None" (or even "None:0" or "None:xxx") is allowed: <paramref name="result"/> can be NOT <see cref="WeakTimeSpan.IsValid"/>
-    /// even if this returns true.
-    /// </remarks>
-    public static bool TryParse( string? s, IFormatProvider? provider, out WeakTimeSpan result ) => TryParse( s.AsSpan(), provider, out result );
-
-    /// <inheritdoc cref="TryParse(string?, out WeakTimeSpan)" />
-    public static bool TryParse( ReadOnlySpan<char> s, out WeakTimeSpan result ) => TryParse( s, null, out result );
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// "None" (or even "None:0" or "None:xxx") is allowed: <paramref name="result"/> can be NOT <see cref="WeakTimeSpan.IsValid"/>
-    /// even if this returns true.
-    /// </remarks>
-    public static bool TryParse( ReadOnlySpan<char> s, IFormatProvider? provider, out WeakTimeSpan result )
-    {
-        if( s.TryMatchTimeSpanUnit( out var unit, StringComparison.OrdinalIgnoreCase ) )
-        {
-            s.SkipWhiteSpaces();
-            if( unit == TimeSpanUnit.None )
-            {
-                result = default;
-                // Allow "None" to not have :count (but it must be at least zero or positive: :- is not in this grammar).
-                if( s.TryMatch( ':' ) )
-                {
-                    s.SkipWhiteSpaces();
-                    return s.Length == 0 || (s.TryMatchInt32( out var ignored ) && ignored >= 0);
-                }
-                return true;
-            }
-            if( s.TryMatch( ':' ) && s.SkipWhiteSpaces() && s.TryMatchInt32( out var count, minValue: 1 ) )
-            {
-                result = new WeakTimeSpan( unit, count );
-                return true;
-            }
-        }
-        result = default;
-        return false;
-    }
 
 }

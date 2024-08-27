@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 
 namespace CK.Core;
 
@@ -26,6 +27,53 @@ public static class TimeSpanUnitExtensions
                 TimeSpanUnit.Millisecond => nameof( TimeSpanUnit.Millisecond ),
                 _ => nameof( TimeSpanUnit.None ),
             };
+
+    /// <summary>
+    /// Computes the <see cref="WeakTimeSpan"/> in this unit between 2 dates.
+    /// </summary>
+    /// <param name="unit">This unit.</param>
+    /// <param name="t1">One of the date.</param>
+    /// <param name="t2">The other date.</param>
+    /// <returns>The weak time span between the dates.</returns>
+    public static WeakTimeSpan GetWeakTimeSpan( this TimeSpanUnit unit, DateTime t1, DateTime t2 )
+    {
+        long delta = GetDeltaUnit( unit, t1, t2 );
+        return new WeakTimeSpan( unit, Math.Abs( delta ) + 1 );
+    }
+
+    /// <summary>
+    /// Gets whether the 2 dates are in this same unit.
+    /// </summary>
+    /// <param name="unit">This unit.</param>
+    /// <param name="t1">One of the date.</param>
+    /// <param name="t2">The other date.</param>
+    /// <returns>Whether the dates are in the same unit.</returns>
+    public static bool SameWeakTimeSpan( this TimeSpanUnit unit, DateTime t1, DateTime t2 ) => GetDeltaUnit( unit, t1, t2 ) == 0;
+
+    static long GetDeltaUnit( TimeSpanUnit unit, DateTime t1, DateTime t2 )
+    {
+        return unit switch
+        {
+            TimeSpanUnit.Year => t1.Year - t2.Year,
+            TimeSpanUnit.Semester => SemesterCount( t1 ) - SemesterCount( t2 ),
+            TimeSpanUnit.Quarter => QuarterCount( t1 ) - QuarterCount( t2 ),
+            TimeSpanUnit.Month => MonthCount( t1 ) - MonthCount( t2 ),
+            TimeSpanUnit.Day => DayCount( t1 ) - DayCount( t2 ),
+            TimeSpanUnit.Hour => HourCount( t1 ) - HourCount( t2 ),
+            TimeSpanUnit.Minute => MinuteCount( t1 ) - MinuteCount( t2 ),
+            TimeSpanUnit.Second => SecondCount( t1 ) - SecondCount( t2 ),
+            TimeSpanUnit.Millisecond => MillisecondCount( t1 ) - MillisecondCount( t2 ),
+            _ => Throw.ArgumentOutOfRangeException<long>( nameof( unit ) )
+        };
+    }
+    static int SemesterCount( DateTime t ) => (t.Year << 1) + (t.Month > 6 ? 1 : 0);
+    static int QuarterCount( DateTime t ) => (t.Year << 2) + ((t.Month-1) / 3);
+    static int MonthCount( DateTime t ) => t.Year * 12 + t.Month;
+    static long DayCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerDay;
+    static long HourCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerHour;
+    static long MinuteCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerMinute;
+    static long SecondCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerSecond;
+    static long MillisecondCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerMillisecond;
 
     /// <summary>
     /// Tries to match one of the enum name and forward the <paramref name="head"/> on success.
@@ -79,6 +127,5 @@ public static class TimeSpanUnitExtensions
             if( !head.TryMatch( nameof( TimeSpanUnit.None ), comparison ) ) return false;
         }
         return true;
-
     }
 }

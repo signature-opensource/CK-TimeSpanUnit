@@ -19,8 +19,10 @@ public enum TimeSpanUnit : byte
     Millisecond
 }
 ```
-Weeks are not supported because it is not that easy (see https://en.wikipedia.org/wiki/ISO_week_date) and
-cannot really be grouped by semester or quarter.
+
+### Weeks are not supported
+Because it is not that easy (see https://en.wikipedia.org/wiki/ISO_week_date) and
+cannot really be grouped by semester or quarter and even year.
 
 If this need to be supported, the ISO definition implemented by [ISOWeek](https://learn.microsoft.com/en-us/dotnet/api/system.globalization.isoweek)
 should be used (week starts on monday).
@@ -45,7 +47,25 @@ A `WeakTimeSpan` can be normalized when it can be expressed with a smaller count
 - Quarter => Semester => Year:
   - "Quarter:4" => "Year:1"
   - "Quarter:18" => "Semester:9"
-  - "Semester:30" => "Year:15
+  - "Semester:30" => "Year:15"
+
+This type is not a "mathematical" type, it doesn't support any operation. The `WeakTimeSpan.Count` cannot be 0 or negative, it is necessarily positive.
+A `WeakTimeSpan` can be computed from 2 `DateTime`:
+```csharp
+var a = DateTime.Parse( "2000/01/31 03:04:10", CultureInfo.InvariantCulture );
+var b = DateTime.Parse( "2000/03/31 23:59:59.9999999", CultureInfo.InvariantCulture );
+TimeSpanUnit.Year.GetWeakTimeSpan( a, b )        // => "Year:1"
+TimeSpanUnit.Semester.GetWeakTimeSpan( a, b )    // => "Semester:1"
+TimeSpanUnit.Quarter.GetWeakTimeSpan( a, b )     // => "Quarter:1"
+TimeSpanUnit.Month.GetWeakTimeSpan( a, b )       // => "Month:3"
+TimeSpanUnit.Day.GetWeakTimeSpan( a, b )         // => "Day:61"
+TimeSpanUnit.Hour.GetWeakTimeSpan( a, b )        // => "Hour:1461"
+TimeSpanUnit.Minute.GetWeakTimeSpan( a, b )      // => "Minute:87656"
+TimeSpanUnit.Second.GetWeakTimeSpan( a, b )      // => "Second:5259350"
+TimeSpanUnit.Millisecond.GetWeakTimeSpan( a, b ) // => "Millisecond:5259350000"
+```
+When the `Count` is 1, it means that the 2 dates are in the same unit of time. The `bool SameWeakTimeSpan( DateTime t1, DateTime t2 )`
+extension method can test that without creating a `WeakTimeSpan`.
 
 ## TimeSpanUnitPathPart enumeration (and its GetPath)
 The [TimeSpanUnitPathPart](CK.TimeSpanUnit/TimeSpanUnitPathPart.cs) enumeration is a bit flag that defines
@@ -53,7 +73,7 @@ how `Datetime` components should be as a path compliant string.
 
 The `string GetPath( this TimeSpanUnitPathPart parts, DateTime instant, TimeSpanUnit upTo = TimeSpanUnit.Millisecond)` can build a path based
 on the `parts` bit flags that defines the components that must appear as a folder in the path
-and the `upTo` parameter that is the precision of the resulting path (this trucates the path after the correspnding component).
+and the `upTo` parameter that is the precision of the resulting path (this truncates the path after the correspnding component).
 
 A path always starts with the 4-digits year followed by '-' or '/'. When the component is not flagged, hyphens
 are used to separate the components except for the time separator that uses the ISO 'T' convention and the milliseconds

@@ -1,10 +1,28 @@
 using FluentAssertions;
 using NUnit.Framework;
+using System;
+using System.Globalization;
 
 namespace CK.Core.Tests
 {
     public class WeakTimeSpanTests
     {
+        [Test]
+        public void GetWeakTimeSpan_Sample()
+        {
+            var a = DateTime.Parse( "2000/01/31 03:04:10", CultureInfo.InvariantCulture );
+            var b = DateTime.Parse( "2000/03/31 23:59:59.9999999", CultureInfo.InvariantCulture );
+            TimeSpanUnit.Year.GetWeakTimeSpan( a, b ).ToString().Should().Be( "Year:1" );
+            TimeSpanUnit.Semester.GetWeakTimeSpan( a, b ).ToString().Should().Be( "Semester:1" );
+            TimeSpanUnit.Quarter.GetWeakTimeSpan( a, b ).ToString().Should().Be( "Quarter:1" );
+            TimeSpanUnit.Month.GetWeakTimeSpan( a, b ).ToString().Should().Be( "Month:3" );
+            TimeSpanUnit.Day.GetWeakTimeSpan( a, b ).ToString().Should().Be( "Day:61" );
+            TimeSpanUnit.Hour.GetWeakTimeSpan( a, b ).ToString().Should().Be( "Hour:1461" );
+            TimeSpanUnit.Minute.GetWeakTimeSpan( a, b ).ToString().Should().Be( "Minute:87656" );
+            TimeSpanUnit.Second.GetWeakTimeSpan( a, b ).ToString().Should().Be( "Second:5259350" );
+            TimeSpanUnit.Millisecond.GetWeakTimeSpan( a, b ).ToString().Should().Be( "Millisecond:5259350000" );
+        }
+
         [TestCase( TimeSpanUnit.Year, 1000 )]
         [TestCase( TimeSpanUnit.Semester, 1 )]
         [TestCase( TimeSpanUnit.Quarter, 4 )]
@@ -112,5 +130,82 @@ namespace CK.Core.Tests
         {
             WeakTimeSpan.Parse( s ).Normalize().ToString().Should().Be( s );
         }
+
+        [TestCase( "0001/01/01 00:00:00", "0001/01/01 00:00:00", TimeSpanUnit.Year, "Year:1" )]
+        [TestCase( "0001/01/01 00:00:00", "0001/01/01 23:59:59.9999999", TimeSpanUnit.Year, "Year:1" )]
+        [TestCase( "0001/01/01 00:00:00", "1969/12/08 14:34:56", TimeSpanUnit.Year, "Year:1969" )]
+        [TestCase( "1969/12/08 14:34:56", "0001/01/01 00:00:00", TimeSpanUnit.Year, "Year:1969" )]
+
+        [TestCase( "2000/01/01 14:34:56", "2000/01/01 00:00:00", TimeSpanUnit.Semester, "Semester:1" )]
+        [TestCase( "2000/01/01 00:00:00", "2000/06/30 23:59:59.9999999", TimeSpanUnit.Semester, "Semester:1" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/07/01 00:00:00", TimeSpanUnit.Semester, "Semester:2" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/12/31 23:59:59.9999999", TimeSpanUnit.Semester, "Semester:2" )]
+        [TestCase( "2000/01/01 14:34:56", "2001/01/01 00:00:00", TimeSpanUnit.Semester, "Semester:3" )]
+        [TestCase( "2000/01/01 14:34:56", "2001/12/31 23:59:59.9999999", TimeSpanUnit.Semester, "Semester:4" )]
+        [TestCase( "2000/01/01 14:34:56", "2002/03/01 00:00:00", TimeSpanUnit.Semester, "Semester:5" )]
+
+        [TestCase( "2000/01/01 14:34:56", "2000/01/01 00:00:00", TimeSpanUnit.Quarter, "Quarter:1" )]
+        [TestCase( "2000/01/01 00:00:00", "2000/03/31 23:59:59.9999999", TimeSpanUnit.Quarter, "Quarter:1" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/04/01 00:00:00", TimeSpanUnit.Quarter, "Quarter:2" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/06/30 23:59:59.9999999", TimeSpanUnit.Quarter, "Quarter:2" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/07/01 00:00:00", TimeSpanUnit.Quarter, "Quarter:3" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/09/30 23:59:59.9999999", TimeSpanUnit.Quarter, "Quarter:3" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/10/01 00:00:00", TimeSpanUnit.Quarter, "Quarter:4" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/12/31 23:59:59.9999999", TimeSpanUnit.Quarter, "Quarter:4" )]
+
+        [TestCase( "2000/01/01 14:34:56", "2001/01/01 00:00:00", TimeSpanUnit.Quarter, "Quarter:5" )]
+        [TestCase( "2000/01/01 14:34:56", "2001/06/30 00:00:00", TimeSpanUnit.Quarter, "Quarter:6" )]
+        [TestCase( "2000/01/01 14:34:56", "2001/07/01 00:00:00", TimeSpanUnit.Quarter, "Quarter:7" )]
+        [TestCase( "2000/01/01 14:34:56", "2001/09/30 23:59:59.9999999", TimeSpanUnit.Quarter, "Quarter:7" )]
+        [TestCase( "2000/01/01 14:34:56", "2001/10/01 00:00:00", TimeSpanUnit.Quarter, "Quarter:8" )]
+        [TestCase( "2000/01/01 14:34:56", "2001/12/31 23:59:59.9999999", TimeSpanUnit.Quarter, "Quarter:8" )]
+
+        [TestCase( "2000/01/01 14:34:56", "2000/01/01 00:00:00", TimeSpanUnit.Month, "Month:1" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/02/01 00:00:00", TimeSpanUnit.Month, "Month:2" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/12/01 23:59:59.9999999", TimeSpanUnit.Month, "Month:12" )]
+        [TestCase( "2000/01/01 14:34:56", "2001/01/01 00:00:00", TimeSpanUnit.Month, "Month:13" )]
+
+        [TestCase( "2000/01/01 14:34:56", "2000/01/01 00:00:00", TimeSpanUnit.Day, "Day:1" )]
+        [TestCase( "2000/01/01 00:00:00", "2000/01/01 23:59:59.9999999", TimeSpanUnit.Day, "Day:1" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/01/02 00:00:00", TimeSpanUnit.Day, "Day:2" )]
+        [TestCase( "2000/01/01 00:00:00", "2000/01/02 23:59:59.9999999", TimeSpanUnit.Day, "Day:2" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/01/03 00:00:00", TimeSpanUnit.Day, "Day:3" )]
+        [TestCase( "2000/01/01 14:34:56", "2000/01/08 23:59:59.9999999", TimeSpanUnit.Day, "Day:8" )]
+
+        [TestCase( "2000/01/01 14:10:10", "2000/01/01 14:10:10", TimeSpanUnit.Hour, "Hour:1" )]
+        [TestCase( "2000/01/01 14:10:10", "2000/01/01 15:10:10", TimeSpanUnit.Hour, "Hour:2" )]
+        [TestCase( "2000/01/01 14:10:10", "2000/01/01 00:00:00", TimeSpanUnit.Hour, "Hour:15" )]
+        [TestCase( "2000/01/01 14:10:10", "2000/01/01 23:59:59.9999999", TimeSpanUnit.Hour, "Hour:10" )]
+        [TestCase( "2000/01/01 14:10:10", "2000/01/02 00:00:00", TimeSpanUnit.Hour, "Hour:11" )]
+        [TestCase( "2000/01/01 14:10:10", "2000/01/02 01:00:00", TimeSpanUnit.Hour, "Hour:12" )]
+        [TestCase( "2000/01/01 14:10:10", "2000/01/05 01:59:59.9999999", TimeSpanUnit.Hour, "Hour:84" )]
+
+        [TestCase( "2000/01/01 14:10:10", "2000/01/01 14:10:10", TimeSpanUnit.Minute, "Minute:1" )]
+        [TestCase( "2000/01/01 14:30:00", "2000/01/01 14:30:59.9999999", TimeSpanUnit.Minute, "Minute:1" )]
+        [TestCase( "2000/01/01 14:30:00", "2000/01/01 14:31:00", TimeSpanUnit.Minute, "Minute:2" )]
+        [TestCase( "2000/01/01 14:30:00", "2000/01/01 15:31:59.9999999", TimeSpanUnit.Minute, "Minute:62" )]
+
+        [TestCase( "2000/01/01 14:10:10", "2000/01/01 14:10:10", TimeSpanUnit.Second, "Second:1" )]
+        [TestCase( "2000/01/01 14:30:10", "2000/01/01 14:30:59.9999999", TimeSpanUnit.Second, "Second:50" )]
+        [TestCase( "2000/01/01 14:30:10", "2000/01/01 14:31:00", TimeSpanUnit.Second, "Second:51" )]
+        [TestCase( "2000/01/01 14:30:10", "2000/01/01 15:31:00.9999999", TimeSpanUnit.Second, "Second:3651" )]
+
+        [TestCase( "2000/01/01 14:10:10", "2000/01/01 14:10:10", TimeSpanUnit.Millisecond, "Millisecond:1" )]
+        [TestCase( "2000/01/01 14:30:10", "2000/01/01 14:30:10.0009999", TimeSpanUnit.Millisecond, "Millisecond:1" )]
+        [TestCase( "2000/01/01 14:30:10", "2000/01/01 14:30:10.001", TimeSpanUnit.Millisecond, "Millisecond:2" )]
+        [TestCase( "2000/01/01 14:30:10", "2000/01/01 14:30:10.010", TimeSpanUnit.Millisecond, "Millisecond:11" )]
+        [TestCase( "2000/01/01 14:30:10", "2000/01/01 14:30:10.0109999", TimeSpanUnit.Millisecond, "Millisecond:11" )]
+        [TestCase( "2000/01/01 14:30:10", "2000/01/01 14:30:10.9999999", TimeSpanUnit.Millisecond, "Millisecond:1000" )]
+        [TestCase( "2000/01/01 14:30:10", "2000/01/02 14:30:10.9999999", TimeSpanUnit.Millisecond, "Millisecond:86401000" )]
+
+        public void WeakTimeSpan_can_be_computed_between_2_dates( string t1, string t2, TimeSpanUnit unit, string weakTimeSpan )
+        {
+            DateTime v1 = DateTime.Parse( t1, CultureInfo.InvariantCulture );
+            DateTime v2 = DateTime.Parse( t2, CultureInfo.InvariantCulture );
+            var s = unit.GetWeakTimeSpan( v1, v2 );
+            s.ToString().Should().Be( weakTimeSpan );
+            ((s.Count == 1) == unit.SameWeakTimeSpan( v1, v2 )).Should().BeTrue(); 
+        }
+
     }
 }
