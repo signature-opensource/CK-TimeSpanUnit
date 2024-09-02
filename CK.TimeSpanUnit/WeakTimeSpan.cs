@@ -109,8 +109,6 @@ public readonly partial struct WeakTimeSpan : ISpanParsable<WeakTimeSpan>
         return this;
     }
 
-
-
     /// <summary>
     /// Gets the "Unit:Count" representation of this span.
     /// </summary>

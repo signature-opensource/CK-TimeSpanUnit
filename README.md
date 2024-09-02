@@ -19,6 +19,10 @@ public enum TimeSpanUnit : byte
     Millisecond
 }
 ```
+Only 2 operations are supported on this unit (through extension methods):
+- `unit.GetStart( DateTime t, long offset = 0 )` returns the first DateTime on the unit that contains `t`.
+- `unit.GetEnd( DateTime t, long offset = 0 )` returns the inclusive end of the unit: it is the start of the next span (the `GetStart( t, offset+1)`)
+minus one Tick (100 nanoseconds).
 
 ### Weeks are not supported
 Because it is not that easy (see https://en.wikipedia.org/wiki/ISO_week_date) and
