@@ -52,7 +52,7 @@ public readonly partial struct WeakTimeSpan
     public bool IsValid => _value != 0;
 
     /// <summary>
-    /// Tries to normalize this span to a more general one if possible: "Second:3600" returns "Minute:1" or
+    /// Tries to normalize this span to a more general one if possible: "Second:3600" returns "Hour:1" or
     /// "Quarter:8" returns "Year:2".
     /// <para>
     /// Days cannot be normalized to months, semesters or years.
@@ -90,7 +90,6 @@ public readonly partial struct WeakTimeSpan
                 {
                     (q, r) = Math.DivRem( count, 6 );
                     if( r == 0 ) return new WeakTimeSpan( TimeSpanUnit.Semester, q );
-
                 }
                 if( !ignoreQuarter )
                 {
@@ -117,9 +116,9 @@ public readonly partial struct WeakTimeSpan
     /// <summary>
     /// Gets whether this time span is aligned.
     /// </summary>
-    public bool IsAligned => GetAligned( out var _, out var _ );
+    public bool IsEraligned => GetEraligned( out var _, out var _ );
 
-    bool GetAligned( out TimeSpanUnit unit, out long count )
+    bool GetEraligned( out TimeSpanUnit unit, out long count )
     {
         // Normalizing is a side effect.
         unit = Unit;
@@ -228,64 +227,87 @@ public readonly partial struct WeakTimeSpan
     }
 
     /// <summary>
-    /// Gets the start date of this <see cref="IsAligned"/> span for any <paramref name="dateTime"/>.
-    /// <para><see cref="IsAligned"/> must be true otherwise a <see cref="InvalidOperationException"/> is thrown.</para>
+    /// Gets the start date of this <see cref="IsEraligned"/> span for any <paramref name="dateTime"/>.
+    /// <para><see cref="IsEraligned"/> must be true otherwise a <see cref="InvalidOperationException"/> is thrown.</para>
     /// </summary>
     /// <param name="dateTime">The DateTime for which the start of the aligned range must be computed.</param>
     /// <returns>The start of the aligned range.</returns>
-    public DateTime GetAlignedStart( DateTime dateTime )
+    public DateTime GetEralignedStart( DateTime dateTime ) => GetEralignedStart( dateTime, out var _, out var _ );
+
+    /// <summary>
+    /// Gets the start date of this <see cref="IsEraligned"/> span for any <paramref name="dateTime"/>.
+    /// <para><see cref="IsEraligned"/> must be true otherwise a <see cref="InvalidOperationException"/> is thrown.</para>
+    /// </summary>
+    /// <param name="dateTime">The DateTime for which the start of the aligned range must be computed.</param>
+    /// <param name="normalizedUnit">Outputs the normalized unit that may differ from this <see cref="Unit"/></param>
+    /// <param name="normalizedUnit">Outputs the normalized count that may differ from this <see cref="Count"/></param>
+    /// <returns>The start of the aligned range.</returns>
+    public DateTime GetEralignedStart( DateTime dateTime, out TimeSpanUnit normalizedUnit, out long normalizedCount )
     {
-        if( !GetAligned( out var unit, out var count ) )
-        {
-            Throw.InvalidOperationException( $"The WeakTimeSpan '{ToString()}' is not aligned." );
-        }
-        switch( unit )
+        CheckEraligned( out normalizedUnit, out normalizedCount );
+        switch( normalizedUnit )
         {
             case TimeSpanUnit.Year:
-                var y = (int)count;
+                var y = (int)normalizedCount;
                 return new DateTime( 1 + ((dateTime.Year - 1) / y) * y, 1, 1, 0, 0, 0, dateTime.Kind );
             case TimeSpanUnit.Semester:
-                Throw.DebugAssert( count == 1 );
+                Throw.DebugAssert( normalizedCount == 1 );
                 return new DateTime( dateTime.Year, dateTime.Month > 6 ? 7 : 1, 1, 0, 0, 0, dateTime.Kind );
             case TimeSpanUnit.Quarter:
-                Throw.DebugAssert( count == 1 );
-                return new DateTime( dateTime.Year, 1 + ((dateTime.Month - 1) / 3), 1, 0, 0, 0, dateTime.Kind );
+                Throw.DebugAssert( normalizedCount == 1 );
+                return new DateTime( dateTime.Year, 1 + ((dateTime.Month - 1) / 3) * 3, 1, 0, 0, 0, dateTime.Kind );
             case TimeSpanUnit.Month:
-                Throw.DebugAssert( count is 1 or 2 or 4 );
-                var mCount = (int)count;
+                Throw.DebugAssert( normalizedCount is 1 or 2 or 4 );
+                var mCount = (int)normalizedCount;
                 return new DateTime( dateTime.Year, 1 + ((dateTime.Month - 1) / mCount) * mCount, 1, 0, 0, 0, dateTime.Kind );
             case TimeSpanUnit.Day:
-                return new DateTime( dateTime.Year, dateTime.Month, dateTime.Day, 0, 0, 0, dateTime.Kind );
+                return RoundTicks( dateTime, normalizedCount * TimeSpan.TicksPerDay );
             case TimeSpanUnit.Hour:
-                Throw.DebugAssert( count is 1 or 2 or 3 or 4 or 6 or 8 or 12 );
-                var mHour = (int)count;
-                return new DateTime( dateTime.Year, dateTime.Month, dateTime.Day, (dateTime.Hour / mHour) * mHour, 0, 0, dateTime.Kind );
+                Throw.DebugAssert( normalizedCount is 1 or 2 or 3 or 4 or 6 or 8 or 12 );
+                return RoundTicks( dateTime, normalizedCount * TimeSpan.TicksPerHour );
             case TimeSpanUnit.Minute:
-                Throw.DebugAssert( count is 1 or 2 or 3 or 4 or 5 or 6 or 10 or 12 or 15 or 20 or 30 );
-                var mMinute = (int)count;
-                return new DateTime( dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour, (dateTime.Minute / mMinute) * mMinute, 0, dateTime.Kind );
+                Throw.DebugAssert( normalizedCount is 1 or 2 or 3 or 4 or 5 or 6 or 10 or 12 or 15 or 20 or 30 );
+                return RoundTicks( dateTime, normalizedCount * TimeSpan.TicksPerMinute );
             case TimeSpanUnit.Second:
-                Throw.DebugAssert( count is 1 or 2 or 3 or 4 or 5 or 6 or 10 or 12 or 15 or 20 or 30 );
-                var mSecond = (int)count;
-                return new DateTime( dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour, dateTime.Minute, (dateTime.Second / mSecond) * mSecond, dateTime.Kind );
+                Throw.DebugAssert( normalizedCount is 1 or 2 or 3 or 4 or 5 or 6 or 10 or 12 or 15 or 20 or 30 );
+                return RoundTicks( dateTime, normalizedCount * TimeSpan.TicksPerSecond );
             default:
-                Throw.DebugAssert( unit == TimeSpanUnit.Millisecond );
-                Throw.DebugAssert( count is 1 or 2 or 4 or 5 or 8 or 10 or 20 or 25 or 40 or 50 or 100 or 125 or 200 or 250 or 500 );
-                var mMS = (int)count;
-                return new DateTime( dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour, dateTime.Minute, dateTime.Second, (dateTime.Millisecond / mMS) * mMS, dateTime.Kind );
+                Throw.DebugAssert( normalizedUnit == TimeSpanUnit.Millisecond );
+                Throw.DebugAssert( normalizedCount is 1 or 2 or 4 or 5 or 8 or 10 or 20 or 25 or 40 or 50 or 100 or 125 or 200 or 250 or 500 );
+                return RoundTicks( dateTime, normalizedCount * TimeSpan.TicksPerMillisecond );
+        }
+
+        static DateTime RoundTicks( DateTime dateTime, long step ) => new DateTime( (dateTime.Ticks / step) * step, dateTime.Kind );
+    }
+
+    void CheckEraligned( out TimeSpanUnit normalizedUnit, out long normalizedCount )
+    {
+        if( !GetEraligned( out normalizedUnit, out normalizedCount ) )
+        {
+            Throw.InvalidOperationException( $"The WeakTimeSpan '{ToString()}' is not eraligned." );
         }
     }
 
     /// <summary>
-    /// Gets the <see cref="DateTimeRange"/> of this <see cref="IsAligned"/> span for any <paramref name="dateTime"/>.
-    /// <para><see cref="IsAligned"/> must be true otherwise a <see cref="InvalidOperationException"/> is thrown.</para>
+    /// Gets the <see cref="DateTimeRange"/> of this <see cref="IsEraligned"/> span for any <paramref name="dateTime"/>.
+    /// <para><see cref="IsEraligned"/> must be true otherwise a <see cref="InvalidOperationException"/> is thrown.</para>
     /// </summary>
     /// <param name="dateTime">The DateTime for which the <see cref="DateTimeRange"/> must be computed.</param>
+    /// <param name="normalize">
+    /// False to keep this span (like "Quarter:8") for the <see cref="DateTimeRange.Span"/>.
+    /// By default, the span is normalized (i.e. "Year:2").
+    /// </param>
     /// <returns>The range.</returns>
-    public DateTimeRange GetDateTimeRange( DateTime dateTime ) => new DateTimeRange( GetAlignedStart( dateTime ), this );
+    public DateTimeRange GetDateTimeRange( DateTime dateTime, bool normalize = true )
+    {
+        return normalize
+                ? new DateTimeRange( GetEralignedStart( dateTime, out var u, out var c ), new WeakTimeSpan( u, c ) )
+                : new DateTimeRange( GetEralignedStart( dateTime ), this );
+    }
 
     /// <summary>
-    /// Gets the <see cref="DateTimeRange"/> of this <see cref="IsAligned"/> span by its <see cref="DateTimeRange.Index"/>.
+    /// Gets the <see cref="DateTimeRange"/> of this <see cref="IsEraligned"/> span by its <see cref="DateTimeRange.Index"/>.
+    /// <para><see cref="IsEraligned"/> must be true otherwise a <see cref="InvalidOperationException"/> is thrown.</para>
     /// </summary>
     /// <param name="index">The index of the range. Must be 0 or positive.</param>
     /// <param name="kind">The kind of the <see cref="DateTimeRange.Start"/>.</param>
@@ -293,10 +315,7 @@ public readonly partial struct WeakTimeSpan
     public DateTimeRange GetDateTimeRange( long index, DateTimeKind kind = DateTimeKind.Utc )
     {
         Throw.CheckArgument( index >= 0 );
-        if( !GetAligned( out var unit, out var count ) )
-        {
-            Throw.InvalidOperationException( $"The WeakTimeSpan '{ToString()}' is not aligned." );
-        }
+        CheckEraligned( out var unit, out var count );
 
         return new DateTimeRange( GetStart( unit, count, index, kind ), new WeakTimeSpan( unit, count ) );
 

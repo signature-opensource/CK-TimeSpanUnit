@@ -74,30 +74,38 @@ extension method can test that without creating a `WeakTimeSpan`.
 _Note:_ Because we work at most in milliseconds, the `WeakTimeSpan.Count` can be encoded in no more than 50 bits. A WeakTimeSpan 
 fits in a 64 bits number.
  
-A `WeakTimeSpan` is "aligned" if it fits into its parent unit and integrally divides it (no remainder).
-Based on the **normalized form** of a `WeakTimeSpan`:
+Some `WeakTimeSpan` are "eraligned". Eraligned is a neologism that stands for "era aligned". Our era starts the
+January 1, 0001 00:00:00 (midnight) and ends the December 31, 9999 23:59:59. It is unfortunately not 0 based:
+The "Year:10" time span divides the era in "0001 - 0011", "0011 - 0021",... "2021 - 2031", etc.
 
-- When `WeakTimeSpan.Count` is 1 then it is always aligned.
+
+A `WeakTimeSpan` is "eraligned" if it fits into its parent unit and integrally divides it (no remainder).
+
+- When `WeakTimeSpan.Count` is 1 then it is always eraligned.
 - Else when `WeakTimeSpan.Unit` is:
-  - `Year` then it is always aligned.
-  - `Semester` is aligned if its `Count` is a multiple of 2 (i.e. it can be normalized to one or more years).
+  - `Year` then it is always eraligned.
+  - `Semester` is eraligned if its `Count` is a multiple of 2 (i.e. it can be normalized to one or more years).
   - `Quarter` is if its `Count` is 2 or a multiple of 4 (i.e. it can be normalized to one semester or one or more years).
-  - `Month` is aligned if its `Count` is 2, 3, 4 or 6 or is a multiple of 12 (i.e. it can be normalized to one or more years).
+  - `Month` is eraligned if its `Count` is 2, 3, 4 or 6 or is a multiple of 12 (i.e. it can be normalized to one or more years).
   - `Days` then it is always aligned.
-  - `Hour` is aligned if its `Count` is 2, 3, 4, 6, 8, 12 (divisors of 24) or is a multiple of 24 (i.e. it can be normalized to one or more days). 
-  - `Minute` is aligned if its `Count` is 2, 3, 4, 5, 6, 10, 12, 15, 20 or 30 (divisors of 60) or it must be an integral
-    count of hours that must be aligned (that is the normalized form in hour must exist and be aligned).
-  - `Second` is aligned if its `Count` is 2, 3, 4, 5, 6, 10, 12, 15, 20 or 30 (divisors of 60) or it must be an integral
-    count of minutes that must be aligned (that is the normalized form in minutes must exist and be aligned). 
-  - `Millisecond` is aligned if its `Count` is 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 125, 200, 250 or 500 (divisors of 1000) or it must be an integral
-    count of seconds that must be aligned (that is the normalized form in seconds must exist and be aligned). 
+  - `Hour` is eraligned if its `Count` is 2, 3, 4, 6, 8, 12 (divisors of 24) or is a multiple of 24 (i.e. it can be normalized to one or more days). 
+  - `Minute` is eraligned if its `Count` is 2, 3, 4, 5, 6, 10, 12, 15, 20 or 30 (divisors of 60) or it must be an integral
+    count of hours that must be eraligned (that is the normalized form in hour must exist and be eraligned).
+  - `Second` is eraligned if its `Count` is 2, 3, 4, 5, 6, 10, 12, 15, 20 or 30 (divisors of 60) or it must be an integral
+    count of minutes that must be eraligned (that is the normalized form in minutes must exist and be eraligned). 
+  - `Millisecond` is eraligned if its `Count` is 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 125, 200, 250 or 500 (divisors of 1000) or it must be an integral
+    count of seconds that must be eraligned (that is the normalized form in seconds must exist and be eraligned). 
 
+An eraligned `WeakTimeSpan` divides the time in computable and uniquely addressable "time ranges" (say "range" here to avoid reusing "span").
+Any `DateTime` for any `IsEraligned` time span can be associated to a unique "time range" that contains it.
 
-An aligned `WeakTimeSpan` divides the time in computable "time ranges" (say "range" here to avoid reusing "span"). Any `DateTime`
-can be associated to a unique "time range" that contains it. A [`DateTimeRange`](CK.TimeSpanUnit/DateTimeRange.cs) has a `DateTime Start`,
-`DateTime End`, its `WeakTimeSpan Span` and a 0 based `long Index` that identifies it its `Span`.
+A [`DateTimeRange`](CK.TimeSpanUnit/DateTimeRange.cs) has a `DateTime Start`, `DateTime End`, its `WeakTimeSpan Span` and a 0 based `long Index`
+that identifies it: (`Index * Span` is the `Start`).
 
-
+A `DateTimeRange` can only be obtained from a `WeakTimeSpan` (that MUST be `WeakTimeSpan.IsEraligned`) thanks to 2 methods:
+- `DateTimeRange GetDateTimeRange( long index, DateTimeKind kind = DateTimeKind.Utc )` returns the range at the given index (for this span).
+- `DateTimeRange GetDateTimeRange( DateTime dateTime, bool normalize = true )` returns the range that contains the given DateTime (for this span
+  or its normalization).
 
 ## TimeSpanUnitPathPart enumeration (and its GetPath)
 The [TimeSpanUnitPathPart](CK.TimeSpanUnit/TimeSpanUnitPathPart.cs) enumeration is a bit flag that defines

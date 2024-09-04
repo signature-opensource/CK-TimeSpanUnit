@@ -5,7 +5,7 @@ namespace CK.Core;
 
 /// <summary>
 /// Models an absolute time range. This can only be obtained by <see cref="WeakTimeSpan.GetDateTimeRange(DateTime)"/>
-/// when the <see cref="WeakTimeSpan.IsAligned"/> is true.
+/// when the <see cref="WeakTimeSpan.IsEraligned"/> is true.
 /// </summary>
 public readonly struct DateTimeRange
 {
@@ -59,7 +59,7 @@ public readonly struct DateTimeRange
     }
 
     /// <summary>
-    /// Overridden to return the "[start, end[".
+    /// Overridden to return the "[start,end[".
     /// </summary>
     /// <returns>A readable string.</returns>
     public override string ToString()
@@ -68,7 +68,7 @@ public readonly struct DateTimeRange
         var u = _span.Unit;
         b.Append( '[' );
         TimeSpanUnitPathPart.None.WritePath( b, _start, u );
-        b.Append( ", " );
+        b.Append( ',' );
         TimeSpanUnitPathPart.None.WritePath( b, End, u );
         b.Append( '[' );
         return b.ToString();

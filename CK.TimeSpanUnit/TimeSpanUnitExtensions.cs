@@ -88,7 +88,7 @@ public static class TimeSpanUnitExtensions
         {
             TimeSpanUnit.Year => new DateTime( dateTime.Year, 1, 1, 0, 0, 0, dateTime.Kind ),
             TimeSpanUnit.Semester => new DateTime( dateTime.Year, dateTime.Month > 6 ? 7 : 1, 1, 0, 0, 0, dateTime.Kind ),
-            TimeSpanUnit.Quarter => new DateTime( dateTime.Year, 1 + ((dateTime.Month - 1) / 3), 1, 0, 0, 0, dateTime.Kind ),
+            TimeSpanUnit.Quarter => new DateTime( dateTime.Year, 1 + ((dateTime.Month - 1) / 3) * 3, 1, 0, 0, 0, dateTime.Kind ),
             TimeSpanUnit.Month => new DateTime( dateTime.Year, dateTime.Month, 1, 0, 0, 0, dateTime.Kind ),
             TimeSpanUnit.Day => new DateTime( (dateTime.Ticks / TimeSpan.TicksPerDay) * TimeSpan.TicksPerDay, dateTime.Kind ),
             TimeSpanUnit.Hour => new DateTime( (dateTime.Ticks / TimeSpan.TicksPerHour) * TimeSpan.TicksPerHour, dateTime.Kind ),

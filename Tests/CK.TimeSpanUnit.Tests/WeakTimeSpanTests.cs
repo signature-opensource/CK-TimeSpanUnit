@@ -13,7 +13,7 @@ namespace CK.Core.Tests
             ulong max = (ulong)TimeSpan.MaxValue.Ticks;
             ulong maxMS = max / TimeSpan.TicksPerMillisecond;
             // 14 bits are available.
-            // A TimeSpanUnit is 0 -> 9. we could use only 4 bits but its a byte and it fits.
+            // A TimeSpanUnit is 0 -> 9. we could use only 4 bits but its a enum : byte (and it fits).
             (maxMS & 0b1111_1111_1111_1100_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000).Should().Be( 0 );
         }
 
@@ -322,16 +322,16 @@ namespace CK.Core.Tests
         [TestCase( "Millisecond:10000", true )]
         [TestCase( "Millisecond:86400000", true )] // 1 day
 
-        public void IsAligned_test( string weakTimeSpan, bool expected )
+        public void IsEraligned_test( string weakTimeSpan, bool expected )
         {
-            WeakTimeSpan.Parse( weakTimeSpan ).IsAligned.Should().Be( expected );
+            WeakTimeSpan.Parse( weakTimeSpan ).IsEraligned.Should().Be( expected );
         }
 
-        public void Days_and_Years_are_always_aligned()
+        public void Days_and_Years_are_always_eraligned()
         {
             var r = Random.Shared.Next( 100 ) + 1;
-            new WeakTimeSpan( TimeSpanUnit.Year, r ).IsAligned.Should().BeTrue();
-            new WeakTimeSpan( TimeSpanUnit.Day, r ).IsAligned.Should().BeTrue();
+            new WeakTimeSpan( TimeSpanUnit.Year, r ).IsEraligned.Should().BeTrue();
+            new WeakTimeSpan( TimeSpanUnit.Day, r ).IsEraligned.Should().BeTrue();
         }
 
     }
