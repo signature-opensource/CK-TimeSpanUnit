@@ -119,108 +119,110 @@ public readonly partial struct WeakTimeSpan
     /// </summary>
     public bool IsAligned => GetAligned( out var _, out var _ );
 
-    bool GetAligned( out TimeSpanUnit nUnit, out long nCount )
+    bool GetAligned( out TimeSpanUnit unit, out long count )
     {
         // Normalizing is a side effect.
-        nUnit = TimeSpanUnit.None;
-        nCount = 0;
-
-        long c = Count;
-        if( c == 1 ) return true;
-        switch( Unit )
+        unit = Unit;
+        count = Count;
+        if( count == 1 ) return true;
+        switch( unit )
         {
             case TimeSpanUnit.Year:
                 return true;
             case TimeSpanUnit.Semester:
-                nUnit = TimeSpanUnit.Year;
-                nCount = c >> 1;
-                return (c & 1) == 0;
+                if( (count & 1) == 0 )
+                {
+                    unit = TimeSpanUnit.Year;
+                    count = count >> 1;
+                    return true;
+                }
+                return false;
             case TimeSpanUnit.Quarter:
-                if( c == 2 )
+                if( count == 2 )
                 {
-                    nUnit = TimeSpanUnit.Semester;
-                    nCount = 1;
+                    unit = TimeSpanUnit.Semester;
+                    count = 1;
                     return true;
                 }
-                nUnit = TimeSpanUnit.Year;
-                nCount = c >> 2;
-                return (c & 3) == 0;
+                if( (count & 3) == 0 )
+                {
+                    unit = TimeSpanUnit.Year;
+                    count = count >> 2;
+                    return true;
+                }
+                return false;
             case TimeSpanUnit.Month:
-                if( c == 2 || c == 4 ) return true;
-                if( c == 3 )
+                if( count == 2 || count == 4 ) return true;
+                if( count == 3 )
                 {
-                    nUnit = TimeSpanUnit.Quarter;
-                    nCount = 1;
+                    unit = TimeSpanUnit.Quarter;
+                    count = 1;
                     return true;
                 }
-                if( c == 6 )
+                if( count == 6 )
                 {
-                    nUnit = TimeSpanUnit.Semester;
-                    nCount = 1;
+                    unit = TimeSpanUnit.Semester;
+                    count = 1;
                     return true;
                 }
-                if( c < 12 ) return false;
-                nUnit = TimeSpanUnit.Year;
-                (nCount, var monthRem) = Math.DivRem( c, 12 );
+                if( count < 12 ) return false;
+                unit = TimeSpanUnit.Year;
+                (count, var monthRem) = Math.DivRem( count, 12 );
                 return monthRem == 0;
             case TimeSpanUnit.Day:
                 return true;
             case TimeSpanUnit.Hour:
-                return IsAlignedHour( c, ref nUnit, ref nCount );
+                return IsAlignedHour( ref unit, ref count );
             case TimeSpanUnit.Minute:
-                return IsAlignedMinute( c, ref nUnit, ref nCount );
+                return IsAlignedMinute( ref unit, ref count );
             case TimeSpanUnit.Second:
-                return IsAlignedSecond( c, ref nUnit, ref nCount );
+                return IsAlignedSecond( ref unit, ref count );
             case TimeSpanUnit.Millisecond:
-                return IsAlignedMillisecond( c, ref nUnit, ref nCount );
+                return IsAlignedMillisecond( ref unit, ref count );
         }
         return false;
 
-        static bool IsAlignedHour( long hour, ref TimeSpanUnit nUnit, ref long nCount )
+        static bool IsAlignedHour( ref TimeSpanUnit unit, ref long count )
         {
-            (nCount, var r) = Math.DivRem( hour, 24 );
-            if( nCount != 0 )
-            {
-                nUnit = TimeSpanUnit.Day;
-                return r == 0;
-            }
-            Throw.DebugAssert( r > 0 && r < 24 );
-            return (24 % r) == 0;
+            if( count < 24 ) return (24 % count) == 0;
+            (count, var r) = Math.DivRem( count, 24 );
+            unit = TimeSpanUnit.Day;
+            return r == 0;
         }
 
-        static bool IsAlignedMinute( long minute, ref TimeSpanUnit nUnit, ref long nCount )
+        static bool IsAlignedMinute( ref TimeSpanUnit unit, ref long count )
         {
-            if( minute < 60 ) return (60 % minute) == 0;
-            nUnit = TimeSpanUnit.Hour;
-            (nCount, var r) = Math.DivRem( minute, 60 );
+            if( count < 60 ) return (60 % count) == 0;
+            unit = TimeSpanUnit.Hour;
+            (count, var r) = Math.DivRem( count, 60 );
             return r == 0
-                    ? nCount == 1
+                    ? count == 1
                         ? true
-                        : IsAlignedHour( nCount, ref nUnit, ref nCount )
+                        : IsAlignedHour( ref unit, ref count )
                     : false;
         }
 
-        static bool IsAlignedSecond( long second, ref TimeSpanUnit nUnit, ref long nCount )
+        static bool IsAlignedSecond( ref TimeSpanUnit unit, ref long count )
         {
-            if( second < 60 ) return (60 % second) == 0;
-            nUnit = TimeSpanUnit.Minute;
-            (nCount, var r) = Math.DivRem( second, 60 );
+            if( count < 60 ) return (60 % count) == 0;
+            unit = TimeSpanUnit.Minute;
+            (count, var r) = Math.DivRem( count, 60 );
             return r == 0
-                    ? nCount == 1
+                    ? count == 1
                         ? true
-                        : IsAlignedMinute( nCount, ref nUnit, ref nCount )
+                        : IsAlignedMinute( ref unit, ref count )
                     : false;
         }
 
-        static bool IsAlignedMillisecond( long millisecond, ref TimeSpanUnit nUnit, ref long nCount )
+        static bool IsAlignedMillisecond( ref TimeSpanUnit unit, ref long count )
         {
-            if( millisecond < 1000 ) return (1000 % millisecond) == 0;
-            nUnit = TimeSpanUnit.Second;
-            (nCount, var r) = Math.DivRem( millisecond, 1000 );
+            if( count < 1000 ) return (1000 % count) == 0;
+            unit = TimeSpanUnit.Second;
+            (count, var r) = Math.DivRem( count, 1000 );
             return r == 0
-                    ? nCount == 1
+                    ? count == 1
                         ? true
-                        : IsAlignedSecond( nCount, ref nUnit, ref nCount )
+                        : IsAlignedSecond( ref unit, ref count )
                     : false;
         }
     }
@@ -236,11 +238,6 @@ public readonly partial struct WeakTimeSpan
         if( !GetAligned( out var unit, out var count ) )
         {
             Throw.InvalidOperationException( $"The WeakTimeSpan '{ToString()}' is not aligned." );
-        }
-        if( unit == TimeSpanUnit.None )
-        {
-            unit = Unit;
-            count = Count;
         }
         switch( unit )
         {
@@ -299,11 +296,6 @@ public readonly partial struct WeakTimeSpan
         if( !GetAligned( out var unit, out var count ) )
         {
             Throw.InvalidOperationException( $"The WeakTimeSpan '{ToString()}' is not aligned." );
-        }
-        if( unit == TimeSpanUnit.None )
-        {
-            unit = Unit;
-            count = Count;
         }
 
         return new DateTimeRange( GetStart( unit, count, index, kind ), new WeakTimeSpan( unit, count ) );
