@@ -66,15 +66,14 @@ public static class TimeSpanUnitExtensions
             _ => Throw.ArgumentOutOfRangeException<long>( nameof( unit ) )
         };
     }
-    static int SemesterCount( DateTime t ) => (t.Year << 1) + (t.Month > 6 ? 1 : 0);
-    static int QuarterCount( DateTime t ) => (t.Year << 2) + ((t.Month-1) / 3);
-    static int MonthCount( DateTime t ) => t.Year * 12 + t.Month;
-    static long DayCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerDay;
-    static long HourCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerHour;
-    static long MinuteCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerMinute;
-    static long SecondCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerSecond;
-    static long MillisecondCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerMillisecond;
-
+    internal static int SemesterCount( DateTime t ) => (t.Year << 1) + (t.Month > 6 ? 1 : 0);
+    internal static int QuarterCount( DateTime t ) => (t.Year << 2) + ((t.Month-1) / 3);
+    internal static int MonthCount( DateTime t ) => t.Year * 12 + t.Month;
+    internal static long DayCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerDay;
+    internal static long HourCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerHour;
+    internal static long MinuteCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerMinute;
+    internal static long SecondCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerSecond;
+    internal static long MillisecondCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerMillisecond;
 
     /// <summary>
     /// Gets the date that starts this unit for any <paramref name="dateTime"/>.
@@ -175,7 +174,7 @@ public static class TimeSpanUnitExtensions
     /// <param name="dateTime">The datetime in this unit.</param>
     /// <param name="offset">Optional offset of units.</param>
     /// <returns>The date time that starts the time span unit.</returns>
-    public static DateTime GetEnd( this TimeSpanUnit unit, DateTime dateTime, long offset = 0 )
+    public static DateTime GetInclusiveEnd( this TimeSpanUnit unit, DateTime dateTime, long offset = 0 )
     {
         return GetStart( unit, dateTime, offset + 1 ).AddTicks( -1 );
     }

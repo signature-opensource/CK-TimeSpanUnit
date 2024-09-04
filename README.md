@@ -1,6 +1,6 @@
 # CK.TimeSpanUnit
 
-This micro package defines 3 basic types (in the CK.Core namespace):
+This micro package defines 4 basic types (in the CK.Core namespace):
 
 ## TimeSpanUnit enumeration
 The [TimeSpanUnit](CK.TimeSpanUnit/TimeSpanUnit.cs) defines units of time span:
@@ -37,7 +37,7 @@ or `DateTimeFormatInfo.ShortestDayNames` ("Mo" to "Su").
 
 _Note:_ These names array start with sunday (the en-US way) instead of the ISO monday. This will have to be handled to conform to the ISO rules.
 
-## WeakTimeSpan
+## WeakTimeSpan, alignment and DateTimeRange
 The readonly struct [WeakTimeSpan](CK.TimeSpanUnit/WeakTimeSpan.cs) defines a time span as a count of `TimeSpanUnit`. Its string representation (`ToString()`)
 is parsable: "Year:3", "Quarter:2", "Minute:5", etc.
 
@@ -53,7 +53,7 @@ A `WeakTimeSpan` can be normalized when it can be expressed with a smaller count
   - "Quarter:18" => "Semester:9"
   - "Semester:30" => "Year:15"
 
-This type is not a "mathematical" type, it doesn't support any operation. The `WeakTimeSpan.Count` cannot be 0 or negative, it is necessarily positive.
+This type is not a "mathematical" type, it doesn't support any operation. The `WeakTimeSpan.Count` is necessarily positive (cannot be 0 or negative).
 A `WeakTimeSpan` can be computed from 2 `DateTime`:
 ```csharp
 var a = DateTime.Parse( "2000/01/31 03:04:10", CultureInfo.InvariantCulture );
@@ -70,6 +70,34 @@ TimeSpanUnit.Millisecond.GetWeakTimeSpan( a, b ) // => "Millisecond:5259350000"
 ```
 When the `Count` is 1, it means that the 2 dates are in the same unit of time. The `bool SameWeakTimeSpan( DateTime t1, DateTime t2 )`
 extension method can test that without creating a `WeakTimeSpan`.
+
+_Note:_ Because we work at most in milliseconds, the `WeakTimeSpan.Count` can be encoded in no more than 50 bits. A WeakTimeSpan 
+fits in a 64 bits number.
+ 
+A `WeakTimeSpan` is "aligned" if it fits into its parent unit and integrally divides it (no remainder).
+Based on the **normalized form** of a `WeakTimeSpan`:
+
+- When `WeakTimeSpan.Count` is 1 then it is always aligned.
+- Else when `WeakTimeSpan.Unit` is:
+  - `Year` then it is always aligned.
+  - `Semester` is aligned if its `Count` is a multiple of 2 (i.e. it can be normalized to one or more years).
+  - `Quarter` is if its `Count` is 2 or a multiple of 4 (i.e. it can be normalized to one semester or one or more years).
+  - `Month` is aligned if its `Count` is 2, 3, 4 or 6 or is a multiple of 12 (i.e. it can be normalized to one or more years).
+  - `Days` then it is always aligned.
+  - `Hour` is aligned if its `Count` is 2, 3, 4, 6, 8, 12 (divisors of 24) or is a multiple of 24 (i.e. it can be normalized to one or more days). 
+  - `Minute` is aligned if its `Count` is 2, 3, 4, 5, 6, 10, 12, 15, 20 or 30 (divisors of 60) or it must be an integral
+    count of hours that must be aligned (that is the normalized form in hour must exist and be aligned).
+  - `Second` is aligned if its `Count` is 2, 3, 4, 5, 6, 10, 12, 15, 20 or 30 (divisors of 60) or it must be an integral
+    count of minutes that must be aligned (that is the normalized form in minutes must exist and be aligned). 
+  - `Millisecond` is aligned if its `Count` is 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 125, 200, 250 or 500 (divisors of 1000) or it must be an integral
+    count of seconds that must be aligned (that is the normalized form in seconds must exist and be aligned). 
+
+
+An aligned `WeakTimeSpan` divides the time in computable "time ranges" (say "range" here to avoid reusing "span"). Any `DateTime`
+can be associated to a unique "time range" that contains it. A [`DateTimeRange`](CK.TimeSpanUnit/DateTimeRange.cs) has a `DateTime Start`,
+`DateTime End`, its `WeakTimeSpan Span` and a 0 based `long Index` that identifies it its `Span`.
+
+
 
 ## TimeSpanUnitPathPart enumeration (and its GetPath)
 The [TimeSpanUnitPathPart](CK.TimeSpanUnit/TimeSpanUnitPathPart.cs) enumeration is a bit flag that defines

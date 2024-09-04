@@ -5,6 +5,7 @@ using System.Globalization;
 
 namespace CK.Core.Tests
 {
+
     [TestFixture]
     public class TimeSpanUnitTests
     {
@@ -125,7 +126,7 @@ namespace CK.Core.Tests
             unit.GetStart( v, offset ).Should().Be( DateTime.Parse( expected, CultureInfo.InvariantCulture ) );
 
             var next = unit.GetStart( v, offset + 1 );
-            unit.GetEnd( v, offset ).AddTicks( 1 ).Should().Be( next );
+            unit.GetInclusiveEnd( v, offset ).AddTicks( 1 ).Should().Be( next );
         }
     }
 }
