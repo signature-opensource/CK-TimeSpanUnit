@@ -6,6 +6,9 @@ namespace CK.Core;
 /// <summary>
 /// Models an absolute time range. This can only be obtained by <see cref="WeakTimeSpan.GetDateTimeRange(DateTime)"/>
 /// when the <see cref="WeakTimeSpan.IsEraligned"/> is true.
+/// <para>
+/// A <c>default</c> value of this type is invalid.
+/// </para>
 /// </summary>
 public readonly struct DateTimeRange
 {
@@ -17,6 +20,12 @@ public readonly struct DateTimeRange
         _start = start;
         _span = span;
     }
+
+    /// <summary>
+    /// Gets whether this is a valid range.
+    /// Only the <c>default</c> value is invalid.
+    /// </summary>
+    public bool IsValid => _span.IsValid;
 
     /// <summary>
     /// Gets the start of this range.
@@ -32,6 +41,20 @@ public readonly struct DateTimeRange
     /// Gets the end of this range. This end is excluded (it is the start of the next range).
     /// </summary>
     public DateTime End => _span.Unit.GetStart( _start, _span.Count );
+
+    /// <summary>
+    /// Gets whether a <paramref name="dateTime"/> is in this range.
+    /// </summary>
+    /// <param name="dateTime">The DateTime.</param>
+    /// <returns>Whether the DateTime is contained in this range.</returns>
+    public bool Contains( DateTime dateTime ) => Start <= dateTime && dateTime < End;
+
+    /// <summary>
+    /// Gets whether another range is the same or is contained in this range.
+    /// </summary>
+    /// <param name="other">The DateTime.</param>
+    /// <returns>Whether the DateTime is contained in this range.</returns>
+    public bool Contains( DateTimeRange other ) => Start <= other.Start && other.End <= End;
 
     /// <summary>
     /// Gets the index of this <see cref="DateTimeRange"/>.
