@@ -7,6 +7,10 @@ namespace CK.Core;
 /// Models an absolute time range. This can only be obtained by <see cref="WeakTimeSpan.GetDateTimeRange(DateTime)"/>
 /// when the <see cref="WeakTimeSpan.IsEraligned"/> is true.
 /// <para>
+/// This is a 128 bits value type that contains the <see cref="Start"/> and the <see cref="Span"/>.
+/// <see cref="Index"/> and <see cref="End"/> are computed properties.
+/// </para>
+/// <para>
 /// A <c>default</c> value of this type is invalid.
 /// </para>
 /// </summary>
@@ -29,7 +33,7 @@ public readonly struct DateTimeRange
 
     /// <summary>
     /// Gets the start of this range.
-    /// </summary.
+    /// </summary>
     public DateTime Start => _start;
 
     /// <summary>
@@ -39,6 +43,9 @@ public readonly struct DateTimeRange
 
     /// <summary>
     /// Gets the end of this range. This end is excluded (it is the start of the next range).
+    /// <para>
+    /// This property is not stored, it is recomputed from the <see cref="Span"/> and <see cref="Start"/>.
+    /// </para>
     /// </summary>
     public DateTime End => _span.Unit.GetStart( _start, _span.Count );
 
@@ -58,6 +65,9 @@ public readonly struct DateTimeRange
 
     /// <summary>
     /// Gets the index of this <see cref="DateTimeRange"/>.
+    /// <para>
+    /// This property is not stored, it is recomputed from the <see cref="Span"/> and <see cref="Start"/>.
+    /// </para>
     /// </summary>
     public long Index
     {
