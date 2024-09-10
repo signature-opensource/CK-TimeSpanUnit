@@ -5,13 +5,13 @@ namespace CK.Core;
 
 /// <summary>
 /// Models an absolute time range. This can only be obtained by <see cref="WeakTimeSpan.GetDateTimeRange(DateTime)"/>
-/// when the <see cref="WeakTimeSpan.IsEraligned"/> is true.
+/// or by <see cref="WeakTimeSpan.GetDateTimeRange(long, DateTimeKind)"/> when the <see cref="WeakTimeSpan.IsEraligned"/> is true.
 /// <para>
 /// This is a 128 bits value type that contains the <see cref="Start"/> and the <see cref="Span"/>.
 /// <see cref="Index"/> and <see cref="End"/> are computed properties.
 /// </para>
 /// <para>
-/// A <c>default</c> value of this type is invalid.
+/// A <c>default</c> value of this type is the only invalid value of this type.
 /// </para>
 /// </summary>
 public readonly struct DateTimeRange
