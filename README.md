@@ -53,8 +53,13 @@ A `WeakTimeSpan` can be normalized when it can be expressed with a smaller count
   - "Quarter:18" => "Semester:9"
   - "Semester:30" => "Year:15"
 
-This type is not a "mathematical" type, it doesn't support any operation. The `WeakTimeSpan.Count` is necessarily positive (cannot be 0 or negative).
-A `WeakTimeSpan` can be computed from 2 `DateTime`:
+The `WeakTimeSpan.Count` is necessarily positive (cannot be 0 or negative).
+
+This type is not a "mathematical" type, it doesn't support many operation:
+
+- A `WeakTimeSpan` can be multiplied by a `long` (this simply multplies the `Count`).
+- A `WeakTimeSpan` can be added or substracted to a `DateTime` (thanks to [extension methods](CK.TimeSpanUnit/DateTimeExtensions.cs).
+- A `WeakTimeSpan` can be computed from 2 `DateTime`:
 ```csharp
 var a = DateTime.Parse( "2000/01/31 03:04:10", CultureInfo.InvariantCulture );
 var b = DateTime.Parse( "2000/03/31 23:59:59.9999999", CultureInfo.InvariantCulture );

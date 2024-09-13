@@ -95,15 +95,36 @@ public readonly struct DateTimeRange
     /// Overridden to return the "[start,end[".
     /// </summary>
     /// <returns>A readable string.</returns>
-    public override string ToString()
+    public override string ToString() => ToString( _span.Unit, _start, End );
+
+
+    /// <summary>
+    /// Helper that writes a date range "[start,end[".
+    /// </summary>
+    /// <param name="unit">The precision to use.</param>
+    /// <param name="start">The start of the range.</param>
+    /// <param name="end">The end of the range.</param>
+    /// <returns>A readable string.</returns>
+    public static string ToString( TimeSpanUnit unit, DateTime start, DateTime end )
     {
-        var b = new StringBuilder();
-        var u = _span.Unit;
+        return WriteRange( new StringBuilder(), unit, start, end ).ToString();
+    }
+
+    /// <summary>
+    /// Helper that writes a date range "[start,end[".
+    /// </summary>
+    /// <param name="b">The builder to use.</param>
+    /// <param name="unit">The precision to use.</param>
+    /// <param name="start">The start of the range.</param>
+    /// <param name="end">The end of the range.</param>
+    /// <returns>The builder.</returns>
+    public static StringBuilder WriteRange( StringBuilder b, TimeSpanUnit unit, DateTime start, DateTime end )
+    {
         b.Append( '[' );
-        TimeSpanUnitPathPart.None.WritePath( b, _start, u );
+        TimeSpanUnitPathPart.None.WritePath( b, start, unit );
         b.Append( ',' );
-        TimeSpanUnitPathPart.None.WritePath( b, End, u );
+        TimeSpanUnitPathPart.None.WritePath( b, end, unit );
         b.Append( '[' );
-        return b.ToString();
+        return b;
     }
 }

@@ -1,5 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 
 namespace CK.Core;
@@ -10,7 +12,7 @@ namespace CK.Core;
 /// It is NOT (and cannot be converted to) an actual <see cref="TimeSpan"/>. 
 /// </para>
 /// </summary>
-public readonly partial struct WeakTimeSpan 
+public readonly partial struct WeakTimeSpan : IMultiplyOperators<WeakTimeSpan,long,WeakTimeSpan>
 {
     const ulong _countMask = (1UL << 56) - 1;
     readonly ulong _value;
@@ -35,6 +37,13 @@ public readonly partial struct WeakTimeSpan
         _value = ((ulong)unit) << 56 | (ulong)count;
     }
 
+    public WeakTimeSpan( long count, TimeSpanUnit unit )
+    {
+        Throw.DebugAssert( unit != TimeSpanUnit.None );
+        Throw.DebugAssert( count > 0 && count <= MaxCount );
+        _value = ((ulong)unit) << 56 | (ulong)count;
+    }
+
     /// <summary>
     /// Gets the count of unit. This is 0 or positive.
     /// </summary>
@@ -52,6 +61,24 @@ public readonly partial struct WeakTimeSpan
     public bool IsValid => _value != 0;
 
     /// <summary>
+    /// Returns a span for wich <see cref="Count"/> is multplied by <paramref name="factor"/>.
+    /// <para>
+    /// <paramref name="factor"/> must be positive (0 is invalid and will throw an <see cref="ArgumentException"/>).
+    /// </para>
+    /// </summary>
+    /// <param name="factor">The greater than 0 factor.</param>
+    /// <returns>The resulting span.</returns>
+    public WeakTimeSpan Multiply( long factor ) => new WeakTimeSpan( Unit, Count *  factor );
+
+    /// <summary>
+    /// Calls <paramref name="left"/>.<see cref="Multiply(long)"/>. <paramref name="factor"/> must be positive.
+    /// </summary>
+    /// <param name="left">The span to multiply.</param>
+    /// <param name="factor">The multipicative factor.</param>
+    /// <returns>The resulting span.</returns>
+    public static WeakTimeSpan operator *( WeakTimeSpan left, long factor ) => left.Multiply( factor );
+    
+    /// <summary>
     /// Tries to normalize this span to a more general one if possible: "Second:3600" returns "Hour:1" or
     /// "Quarter:8" returns "Year:2".
     /// <para>
@@ -68,49 +95,110 @@ public readonly partial struct WeakTimeSpan
         {
             case TimeSpanUnit.Millisecond:
                 (q, r) = Math.DivRem( count, 1000 );
-                if( r == 0 ) return new WeakTimeSpan( TimeSpanUnit.Second, q ).Normalize();
+                if( r == 0 ) return new WeakTimeSpan( q, TimeSpanUnit.Second ).Normalize();
                 break;
             case TimeSpanUnit.Second:
                 (q, r) = Math.DivRem( count, 60 );
-                if( r == 0 ) return new WeakTimeSpan( TimeSpanUnit.Minute, q ).Normalize();
+                if( r == 0 ) return new WeakTimeSpan( q, TimeSpanUnit.Minute ).Normalize();
                 break;
             case TimeSpanUnit.Minute:
                 (q, r) = Math.DivRem( count, 60 );
-                if( r == 0 ) return new WeakTimeSpan( TimeSpanUnit.Hour, q ).Normalize();
+                if( r == 0 ) return new WeakTimeSpan( q, TimeSpanUnit.Hour ).Normalize();
                 break;
             case TimeSpanUnit.Hour:
                 (q, r) = Math.DivRem( count, 24 );
                 // Day ends here. It cannot be normalized to Month (nor Quarter, Semester or Year).
-                if( r == 0 ) return new WeakTimeSpan( TimeSpanUnit.Day, q );
+                if( r == 0 ) return new WeakTimeSpan( q, TimeSpanUnit.Day );
                 break;
             case TimeSpanUnit.Month:
                 (q, r) = Math.DivRem( count, 12 );
-                if( r == 0 ) return new WeakTimeSpan( TimeSpanUnit.Year, q );
+                if( r == 0 ) return new WeakTimeSpan( q, TimeSpanUnit.Year );
                 if( !ignoreSemester )
                 {
                     (q, r) = Math.DivRem( count, 6 );
-                    if( r == 0 ) return new WeakTimeSpan( TimeSpanUnit.Semester, q );
+                    if( r == 0 ) return new WeakTimeSpan( q, TimeSpanUnit.Semester );
                 }
                 if( !ignoreQuarter )
                 {
                     (q, r) = Math.DivRem( count, 3 );
-                    if( r == 0 ) return new WeakTimeSpan( TimeSpanUnit.Quarter, q );
+                    if( r == 0 ) return new WeakTimeSpan( q, TimeSpanUnit.Quarter );
                 }
                 break;
             case TimeSpanUnit.Quarter:
                 (q, r) = Math.DivRem( count, 4 );
-                if( r == 0 ) return new WeakTimeSpan( TimeSpanUnit.Year, q );
+                if( r == 0 ) return new WeakTimeSpan( q, TimeSpanUnit.Year );
                 if( !ignoreSemester )
                 {
                     (q, r) = Math.DivRem( count, 2 );
-                    if( r == 0 ) return new WeakTimeSpan( TimeSpanUnit.Semester, q );
+                    if( r == 0 ) return new WeakTimeSpan( q, TimeSpanUnit.Semester );
                 }
                 break;
             case TimeSpanUnit.Semester:
-                if( (_value & 1) == 0 ) return new WeakTimeSpan( TimeSpanUnit.Year, count >> 1 );
+                if( (_value & 1) == 0 ) return new WeakTimeSpan( count >> 1, TimeSpanUnit.Year );
                 break;
         }
         return this;
+    }
+
+    /// <summary>
+    /// Computes the earliest date range for this span that contains the <paramref name="dateTime"/>.
+    /// <para>
+    /// The obtained range is not a <see cref="DateTimeRange"/>. This works for any span regardless
+    /// of <see cref="IsEraligned"/>and it is not necessarily the same as the <see cref="GetDateTimeRange(DateTime, bool)"/>
+    /// when IsEraligned is true.
+    /// </para>
+    /// </summary>
+    /// <param name="dateTime">The instant to frame.</param>
+    /// <returns>The range start and end (exluded).</returns>
+    public (DateTime Start, DateTime End) GetEarliestRange( DateTime dateTime )
+    {
+        TimeSpanUnit unit = Unit;
+        var start = unit.GetStart( dateTime, 1 - Count );
+        var end = unit.GetStart( dateTime, 1 );
+        Throw.DebugAssert( DateTimeExtensions.DoAdd( start, unit, Count ) == end );
+        return (start, end);
+    }
+
+    /// <summary>
+    /// Computes the date range for this span that centered on the <paramref name="dateTime"/>.
+    /// <para>
+    /// The obtained range is not a <see cref="DateTimeRange"/>. This works for any span regardless
+    /// of <see cref="IsEraligned"/>and it is not necessarily the same as the <see cref="GetDateTimeRange(DateTime, bool)"/>
+    /// when IsEraligned is true.
+    /// </para>
+    /// </summary>
+    /// <param name="dateTime">The instant to frame.</param>
+    /// <returns>The range start and end (exluded).</returns>
+    public (DateTime Start, DateTime End) GetCenteredRange( DateTime dateTime )
+    {
+        TimeSpanUnit unit = Unit;
+        long count = Count;
+        var start = unit.GetStart( dateTime, 1 - count );
+        var end = unit.GetStart( dateTime, 1 );
+        count >>= 1;
+        start = DateTimeExtensions.DoAdd( start, unit, count );
+        end = DateTimeExtensions.DoAdd( end, unit, count );
+        Throw.DebugAssert( DateTimeExtensions.DoAdd( start, unit, Count ) == end );
+        return (start, end);
+    }
+
+    /// <summary>
+    /// Computes the latest date range for this span that contains the <paramref name="dateTime"/>.
+    /// <para>
+    /// The obtained range is not a <see cref="DateTimeRange"/>. This works for any span regardless
+    /// of <see cref="IsEraligned"/> and it is not necessarily the same as the <see cref="GetDateTimeRange(DateTime, bool)"/>
+    /// when IsEraligned is true.
+    /// </para>
+    /// </summary>
+    /// <param name="dateTime">The instant to frame.</param>
+    /// <returns>The range start and end (exluded).</returns>
+    public (DateTime Start, DateTime End) GetLatestRange( DateTime dateTime )
+    {
+        TimeSpanUnit unit = Unit;
+        var start = unit.GetStart( dateTime, 0 );
+        var end = unit.GetStart( dateTime, Count );
+        Throw.DebugAssert( DateTimeExtensions.DoAdd( start, unit, Count ) == end );
+        return (start, end);
     }
 
     /// <summary>
@@ -240,11 +328,24 @@ public readonly partial struct WeakTimeSpan
     /// </summary>
     /// <param name="dateTime">The DateTime for which the start of the aligned range must be computed.</param>
     /// <param name="normalizedUnit">Outputs the normalized unit that may differ from this <see cref="Unit"/></param>
-    /// <param name="normalizedUnit">Outputs the normalized count that may differ from this <see cref="Count"/></param>
+    /// <param name="normalizedCount">Outputs the normalized count that may differ from this <see cref="Count"/></param>
     /// <returns>The start of the aligned range.</returns>
     public DateTime GetEralignedStart( DateTime dateTime, out TimeSpanUnit normalizedUnit, out long normalizedCount )
     {
         CheckEraligned( out normalizedUnit, out normalizedCount );
+        return DoGetEralignedStart( dateTime, normalizedUnit, normalizedCount );
+    }
+
+    void CheckEraligned( out TimeSpanUnit normalizedUnit, out long normalizedCount )
+    {
+        if( !GetEraligned( out normalizedUnit, out normalizedCount ) )
+        {
+            Throw.InvalidOperationException( $"The WeakTimeSpan '{ToString()}' is not eraligned." );
+        }
+    }
+
+    static DateTime DoGetEralignedStart( DateTime dateTime, TimeSpanUnit normalizedUnit, long normalizedCount )
+    {
         switch( normalizedUnit )
         {
             case TimeSpanUnit.Year:
@@ -280,14 +381,6 @@ public readonly partial struct WeakTimeSpan
         static DateTime RoundTicks( DateTime dateTime, long step ) => new DateTime( (dateTime.Ticks / step) * step, dateTime.Kind );
     }
 
-    void CheckEraligned( out TimeSpanUnit normalizedUnit, out long normalizedCount )
-    {
-        if( !GetEraligned( out normalizedUnit, out normalizedCount ) )
-        {
-            Throw.InvalidOperationException( $"The WeakTimeSpan '{ToString()}' is not eraligned." );
-        }
-    }
-
     /// <summary>
     /// Gets the <see cref="DateTimeRange"/> of this <see cref="IsEraligned"/> span for any <paramref name="dateTime"/>.
     /// <para><see cref="IsEraligned"/> must be true otherwise a <see cref="InvalidOperationException"/> is thrown.</para>
@@ -301,7 +394,7 @@ public readonly partial struct WeakTimeSpan
     public DateTimeRange GetDateTimeRange( DateTime dateTime, bool normalize = true )
     {
         return normalize
-                ? new DateTimeRange( GetEralignedStart( dateTime, out var u, out var c ), new WeakTimeSpan( u, c ) )
+                ? new DateTimeRange( GetEralignedStart( dateTime, out var u, out var c ), new WeakTimeSpan( c, u ) )
                 : new DateTimeRange( GetEralignedStart( dateTime ), this );
     }
 
@@ -317,7 +410,7 @@ public readonly partial struct WeakTimeSpan
         Throw.CheckArgument( index >= 0 );
         CheckEraligned( out var unit, out var count );
 
-        return new DateTimeRange( GetStart( unit, count, index, kind ), new WeakTimeSpan( unit, count ) );
+        return new DateTimeRange( GetStart( unit, count, index, kind ), new WeakTimeSpan( count, unit ) );
 
         static DateTime GetStart( TimeSpanUnit unit, long count, long index, DateTimeKind kind )
         {

@@ -30,6 +30,10 @@ public static class TimeSpanUnitExtensions
 
     /// <summary>
     /// Computes the <see cref="WeakTimeSpan"/> in this unit between 2 dates.
+    /// <para>
+    /// Parameters <paramref name="t1"/> and <paramref name="t2"/> don't need to be ordered.
+    /// </para>
+    /// This is the minimal span that covers both t1 and t2 (t1 and t2 are included).
     /// </summary>
     /// <param name="unit">This unit.</param>
     /// <param name="t1">One of the date.</param>

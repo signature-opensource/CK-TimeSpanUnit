@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
 using System;
 using System.Globalization;
 
@@ -327,11 +328,89 @@ namespace CK.Core.Tests
             WeakTimeSpan.Parse( weakTimeSpan ).IsEraligned.Should().Be( expected );
         }
 
+        [Test]
         public void Days_and_Years_are_always_eraligned()
         {
             var r = Random.Shared.Next( 100 ) + 1;
             new WeakTimeSpan( TimeSpanUnit.Year, r ).IsEraligned.Should().BeTrue();
             new WeakTimeSpan( TimeSpanUnit.Day, r ).IsEraligned.Should().BeTrue();
+        }
+
+        [TestCase( "Earliest", "Year:1", "[1000,1001[" )]
+        [TestCase( "Centered", "Year:1", "[1000,1001[" )]
+        [TestCase( "Latest  ", "Year:1", "[1000,1001[" )]
+
+        [TestCase( "Earliest", "Semester:1", "[1000-S1,1000-S2[" )]
+        [TestCase( "Centered", "Semester:1", "[1000-S1,1000-S2[" )]
+        [TestCase( "Latest  ", "Semester:1", "[1000-S1,1000-S2[" )]
+
+        [TestCase( "Earliest", "Quarter:1", "[1000-Q1,1000-Q2[" )]
+        [TestCase( "Centered", "Quarter:1", "[1000-Q1,1000-Q2[" )]
+        [TestCase( "Latest  ", "Quarter:1", "[1000-Q1,1000-Q2[" )]
+
+        [TestCase( "Earliest", "Month:1", "[1000-01,1000-02[" )]
+        [TestCase( "Centered", "Month:1", "[1000-01,1000-02[" )]
+        [TestCase( "Latest  ", "Month:1", "[1000-01,1000-02[" )]
+
+        [TestCase( "Earliest", "Day:1", "[1000-01-02,1000-01-03[" )]
+        [TestCase( "Centered", "Day:1", "[1000-01-02,1000-01-03[" )]
+        [TestCase( "Latest  ", "Day:1", "[1000-01-02,1000-01-03[" )]
+
+        [TestCase( "Earliest", "Hour:1", "[1000-01-02T03,1000-01-02T04[" )]
+        [TestCase( "Centered", "Hour:1", "[1000-01-02T03,1000-01-02T04[" )]
+        [TestCase( "Latest  ", "Hour:1", "[1000-01-02T03,1000-01-02T04[" )]
+
+
+        [TestCase( "Earliest", "Semester:3", "[0999-S1,1000-S2[" )]
+        [TestCase( "Centered", "Semester:3", "[0999-S2,1001-S1[" )]
+        [TestCase( "Latest  ", "Semester:3", "[1000-S1,1001-S2[" )]
+
+        [TestCase( "Earliest", "Quarter:3", "[0999-Q3,1000-Q2[" )]
+        [TestCase( "Centered", "Quarter:3", "[0999-Q4,1000-Q3[" )]
+        [TestCase( "Latest  ", "Quarter:3", "[1000-Q1,1000-Q4[" )]
+
+        //// Hour is 3. 
+        [TestCase( "Earliest", "Hour:2", "[1000-01-02T02,1000-01-02T04[" )]
+        [TestCase( "Centered", "Hour:2", "[1000-01-02T03,1000-01-02T05[" )] 
+        [TestCase( "Latest  ", "Hour:2", "[1000-01-02T03,1000-01-02T05[" )]
+
+        [TestCase( "Earliest", "Hour:3", "[1000-01-02T01,1000-01-02T04[" )]
+        [TestCase( "Centered", "Hour:3", "[1000-01-02T02,1000-01-02T05[" )]
+        [TestCase( "Latest  ", "Hour:3", "[1000-01-02T03,1000-01-02T06[" )]
+
+        [TestCase( "Earliest", "Hour:4", "[1000-01-02T00,1000-01-02T04[" )]
+        [TestCase( "Centered", "Hour:4", "[1000-01-02T02,1000-01-02T06[" )]
+        [TestCase( "Latest  ", "Hour:4", "[1000-01-02T03,1000-01-02T07[" )]
+
+        [TestCase( "Earliest", "Hour:7", "[1000-01-01T21,1000-01-02T04[" )]
+        [TestCase( "Centered", "Hour:7", "[1000-01-02T00,1000-01-02T07[" )]
+        [TestCase( "Latest  ", "Hour:7", "[1000-01-02T03,1000-01-02T10[" )]
+
+
+        [TestCase( "Earliest", "Minute:13", "[1000-01-02T02-52,1000-01-02T03-05[" )]
+        [TestCase( "Centered", "Minute:13", "[1000-01-02T02-58,1000-01-02T03-11[" )]
+        [TestCase( "Latest  ", "Minute:13", "[1000-01-02T03-04,1000-01-02T03-17[" )]
+
+        public void Get_Earliest_Centered_Latest_range_can_be_called_on_any_WeakTimeSpan( string mode, string weakTimeSpan, string expected )
+        {
+            var kind = Random.Shared.Next( 3 ) switch { 0 => DateTimeKind.Local, 1 => DateTimeKind.Local, _ => DateTimeKind.Unspecified };
+            var t = new DateTime( 1000, 1, 2, 3, 4, 5, 6, 7, kind );
+
+            var span = WeakTimeSpan.Parse( weakTimeSpan );
+
+            var (start, end) = mode == "Earliest"
+                                ? span.GetEarliestRange( t )
+                                : mode == "Centered"
+                                    ? span.GetCenteredRange( t )
+                                    : span.GetLatestRange( t );
+            start.Kind.Should().Be( end.Kind ).And.Be( kind );
+            // The end is excluded but GetWeakTimeSpan computes the span that fully covers
+            // the range.
+            span.Unit.GetWeakTimeSpan( start, end.AddTicks( -1 ) ).Should().Be( span );
+
+            t.Should().BeOnOrAfter( start ).And.BeBefore( end );
+
+            DateTimeRange.ToString( span.Unit, start, end ).Should().Be( expected );
         }
 
     }
