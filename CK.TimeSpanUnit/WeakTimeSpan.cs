@@ -37,7 +37,7 @@ public readonly partial struct WeakTimeSpan : IMultiplyOperators<WeakTimeSpan,lo
         _value = ((ulong)unit) << 56 | (ulong)count;
     }
 
-    public WeakTimeSpan( long count, TimeSpanUnit unit )
+    WeakTimeSpan( long count, TimeSpanUnit unit )
     {
         Throw.DebugAssert( unit != TimeSpanUnit.None );
         Throw.DebugAssert( count > 0 && count <= MaxCount );

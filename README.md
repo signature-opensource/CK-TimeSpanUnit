@@ -114,7 +114,7 @@ A `DateTimeRange` can only be obtained from a `WeakTimeSpan` (that MUST be `Weak
 
 ## TimeSpanUnitPathPart enumeration (and its GetPath)
 The [TimeSpanUnitPathPart](CK.TimeSpanUnit/TimeSpanUnitPathPart.cs) enumeration is a bit flag that defines
-how `Datetime` components should be as a path compliant string.
+how `Datetime` components should be rendered as a path compliant string.
 
 The `string GetPath( this TimeSpanUnitPathPart parts, DateTime instant, TimeSpanUnit upTo = TimeSpanUnit.Millisecond)` can build a path based
 on the `parts` bit flags that defines the components that must appear as a folder in the path
@@ -131,7 +131,7 @@ For this date, the table below shows the GetPath result for some parts combinati
 |-------|--------|---------|
 |Semester|2024/S2-08-23T16-42-54.374|The semester is a folder.|
 |InlineSemester|2024-S2-08-23T16-42-54.374|The semester appears but is not a folder.|
-|InlineQuarter,Month,Day|2024-Q3/08/23T16-42-54.374|If there is not many years, this can be intersting...|
+|InlineQuarter,Month,Day|2024-Q3/08/23T16-42-54.374|If there is not many years, this can be interesting...|
 |Month,Day,Hour,Minute|2024/08/23/16/42-54.374|To have one folder per hour, Minute path must be set.|
 |Day,Hour|2024/D236/16-42-54.374|When Day is specified without Month, the Day of Year is used.|
 
