@@ -41,14 +41,14 @@ public enum TimeSpanUnitPathPart
     /// The Month (/01 to /12) must appear in the path.
     /// <para>
     /// When not set, the month appear with an hyphen (-01 to -12) except if <see cref="Day"/> is set:
-    /// in this case, the day of the year is used (/001 to /366).
+    /// in this case, the day of the year is used (/D001 to /D366).
     /// </para>
     /// </summary>
     Month = 1 << 4,
 
     /// <summary>
     /// The number of the day must appear in the path (/01 to /31).
-    /// If <see cref="Month"/> is not set, the day of the year is used (/001 to /366) instead. 
+    /// If <see cref="Month"/> is not set, the day of the year is used (/D001 to /D366) instead. 
     /// </summary>
     Day = 1 << 5,
 

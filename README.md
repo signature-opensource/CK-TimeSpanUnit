@@ -1,6 +1,6 @@
 # CK.TimeSpanUnit
 
-This micro package defines 3 basic types (in the CK.Core namespace):
+This micro package defines 4 basic types (in the CK.Core namespace):
 
 ## TimeSpanUnit enumeration
 The [TimeSpanUnit](CK.TimeSpanUnit/TimeSpanUnit.cs) defines units of time span:
@@ -19,6 +19,10 @@ public enum TimeSpanUnit : byte
     Millisecond
 }
 ```
+Only 2 operations are supported on this unit (through extension methods):
+- `unit.GetStart( DateTime t, long offset = 0 )` returns the first DateTime on the unit that contains `t`.
+- `unit.GetEnd( DateTime t, long offset = 0 )` returns the inclusive end of the unit: it is the start of the next span (the `GetStart( t, offset+1)`)
+minus one Tick (100 nanoseconds).
 
 ### Weeks are not supported
 Because it is not that easy (see https://en.wikipedia.org/wiki/ISO_week_date) and
@@ -33,7 +37,7 @@ or `DateTimeFormatInfo.ShortestDayNames` ("Mo" to "Su").
 
 _Note:_ These names array start with sunday (the en-US way) instead of the ISO monday. This will have to be handled to conform to the ISO rules.
 
-## WeakTimeSpan
+## WeakTimeSpan, alignment and DateTimeRange
 The readonly struct [WeakTimeSpan](CK.TimeSpanUnit/WeakTimeSpan.cs) defines a time span as a count of `TimeSpanUnit`. Its string representation (`ToString()`)
 is parsable: "Year:3", "Quarter:2", "Minute:5", etc.
 
@@ -49,8 +53,13 @@ A `WeakTimeSpan` can be normalized when it can be expressed with a smaller count
   - "Quarter:18" => "Semester:9"
   - "Semester:30" => "Year:15"
 
-This type is not a "mathematical" type, it doesn't support any operation. The `WeakTimeSpan.Count` cannot be 0 or negative, it is necessarily positive.
-A `WeakTimeSpan` can be computed from 2 `DateTime`:
+The `WeakTimeSpan.Count` is necessarily positive (cannot be 0 or negative).
+
+This type is not a "mathematical" type, it doesn't support many operation:
+
+- A `WeakTimeSpan` can be multiplied by a `long` (this simply multplies the `Count`).
+- A `WeakTimeSpan` can be added or substracted to a `DateTime` (thanks to [extension methods](CK.TimeSpanUnit/DateTimeExtensions.cs).
+- A `WeakTimeSpan` can be computed from 2 `DateTime`:
 ```csharp
 var a = DateTime.Parse( "2000/01/31 03:04:10", CultureInfo.InvariantCulture );
 var b = DateTime.Parse( "2000/03/31 23:59:59.9999999", CultureInfo.InvariantCulture );
@@ -67,9 +76,45 @@ TimeSpanUnit.Millisecond.GetWeakTimeSpan( a, b ) // => "Millisecond:5259350000"
 When the `Count` is 1, it means that the 2 dates are in the same unit of time. The `bool SameWeakTimeSpan( DateTime t1, DateTime t2 )`
 extension method can test that without creating a `WeakTimeSpan`.
 
+_Note:_ Because we work at most in milliseconds, the `WeakTimeSpan.Count` can be encoded in no more than 50 bits. A WeakTimeSpan 
+fits in a 64 bits number.
+ 
+Some `WeakTimeSpan` are "eraligned". Eraligned is a neologism that stands for "era aligned". Our era starts the
+January 1, 0001 00:00:00 (midnight) and ends the December 31, 9999 23:59:59. It is unfortunately not 0 based:
+The "Year:10" time span divides the era in "0001 - 0011", "0011 - 0021",... "2021 - 2031", etc.
+
+
+A `WeakTimeSpan` is "eraligned" if it fits into its parent unit and integrally divides it (no remainder).
+
+- When `WeakTimeSpan.Count` is 1 then it is always eraligned.
+- Else when `WeakTimeSpan.Unit` is:
+  - `Year` then it is always eraligned.
+  - `Semester` is eraligned if its `Count` is a multiple of 2 (i.e. it can be normalized to one or more years).
+  - `Quarter` is if its `Count` is 2 or a multiple of 4 (i.e. it can be normalized to one semester or one or more years).
+  - `Month` is eraligned if its `Count` is 2, 3, 4 or 6 or is a multiple of 12 (i.e. it can be normalized to one or more years).
+  - `Days` then it is always aligned.
+  - `Hour` is eraligned if its `Count` is 2, 3, 4, 6, 8, 12 (divisors of 24) or is a multiple of 24 (i.e. it can be normalized to one or more days). 
+  - `Minute` is eraligned if its `Count` is 2, 3, 4, 5, 6, 10, 12, 15, 20 or 30 (divisors of 60) or it must be an integral
+    count of hours that must be eraligned (that is the normalized form in hour must exist and be eraligned).
+  - `Second` is eraligned if its `Count` is 2, 3, 4, 5, 6, 10, 12, 15, 20 or 30 (divisors of 60) or it must be an integral
+    count of minutes that must be eraligned (that is the normalized form in minutes must exist and be eraligned). 
+  - `Millisecond` is eraligned if its `Count` is 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 125, 200, 250 or 500 (divisors of 1000) or it must be an integral
+    count of seconds that must be eraligned (that is the normalized form in seconds must exist and be eraligned). 
+
+An eraligned `WeakTimeSpan` divides the time in computable and uniquely addressable "time ranges" (say "range" here to avoid reusing "span").
+Any `DateTime` for any `IsEraligned` time span can be associated to a unique "time range" that contains it.
+
+A [`DateTimeRange`](CK.TimeSpanUnit/DateTimeRange.cs) has a `DateTime Start`, `DateTime End`, its `WeakTimeSpan Span` and a 0 based `long Index`
+that identifies it: (`Index * Span` is the `Start`).
+
+A `DateTimeRange` can only be obtained from a `WeakTimeSpan` (that MUST be `WeakTimeSpan.IsEraligned`) thanks to 2 methods:
+- `DateTimeRange GetDateTimeRange( long index, DateTimeKind kind = DateTimeKind.Utc )` returns the range at the given index (for this span).
+- `DateTimeRange GetDateTimeRange( DateTime dateTime, bool normalize = true )` returns the range that contains the given DateTime (for this span
+  or its normalization).
+
 ## TimeSpanUnitPathPart enumeration (and its GetPath)
 The [TimeSpanUnitPathPart](CK.TimeSpanUnit/TimeSpanUnitPathPart.cs) enumeration is a bit flag that defines
-how `Datetime` components should be as a path compliant string.
+how `Datetime` components should be rendered as a path compliant string.
 
 The `string GetPath( this TimeSpanUnitPathPart parts, DateTime instant, TimeSpanUnit upTo = TimeSpanUnit.Millisecond)` can build a path based
 on the `parts` bit flags that defines the components that must appear as a folder in the path
@@ -86,7 +131,7 @@ For this date, the table below shows the GetPath result for some parts combinati
 |-------|--------|---------|
 |Semester|2024/S2-08-23T16-42-54.374|The semester is a folder.|
 |InlineSemester|2024-S2-08-23T16-42-54.374|The semester appears but is not a folder.|
-|InlineQuarter,Month,Day|2024-Q3/08/23T16-42-54.374|If there is not many years, this can be intersting...|
+|InlineQuarter,Month,Day|2024-Q3/08/23T16-42-54.374|If there is not many years, this can be interesting...|
 |Month,Day,Hour,Minute|2024/08/23/16/42-54.374|To have one folder per hour, Minute path must be set.|
 |Day,Hour|2024/D236/16-42-54.374|When Day is specified without Month, the Day of Year is used.|
 

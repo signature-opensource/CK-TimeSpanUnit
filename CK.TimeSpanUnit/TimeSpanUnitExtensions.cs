@@ -30,6 +30,10 @@ public static class TimeSpanUnitExtensions
 
     /// <summary>
     /// Computes the <see cref="WeakTimeSpan"/> in this unit between 2 dates.
+    /// <para>
+    /// Parameters <paramref name="t1"/> and <paramref name="t2"/> don't need to be ordered.
+    /// </para>
+    /// This is the minimal span that covers both t1 and t2 (t1 and t2 are included).
     /// </summary>
     /// <param name="unit">This unit.</param>
     /// <param name="t1">One of the date.</param>
@@ -66,14 +70,118 @@ public static class TimeSpanUnitExtensions
             _ => Throw.ArgumentOutOfRangeException<long>( nameof( unit ) )
         };
     }
-    static int SemesterCount( DateTime t ) => (t.Year << 1) + (t.Month > 6 ? 1 : 0);
-    static int QuarterCount( DateTime t ) => (t.Year << 2) + ((t.Month-1) / 3);
-    static int MonthCount( DateTime t ) => t.Year * 12 + t.Month;
-    static long DayCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerDay;
-    static long HourCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerHour;
-    static long MinuteCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerMinute;
-    static long SecondCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerSecond;
-    static long MillisecondCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerMillisecond;
+    internal static int SemesterCount( DateTime t ) => (t.Year << 1) + (t.Month > 6 ? 1 : 0);
+    internal static int QuarterCount( DateTime t ) => (t.Year << 2) + ((t.Month-1) / 3);
+    internal static int MonthCount( DateTime t ) => t.Year * 12 + t.Month;
+    internal static long DayCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerDay;
+    internal static long HourCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerHour;
+    internal static long MinuteCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerMinute;
+    internal static long SecondCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerSecond;
+    internal static long MillisecondCount( DateTime t ) => t.Ticks / TimeSpan.TicksPerMillisecond;
+
+    /// <summary>
+    /// Gets the date that starts this unit for any <paramref name="dateTime"/>.
+    /// </summary>
+    /// <param name="unit">This unit.</param>
+    /// <param name="dateTime">The datetime in this unit.</param>
+    /// <param name="offset">Optional offset of units.</param>
+    /// <returns>The date time that starts the time span unit.</returns>
+    public static DateTime GetStart( this TimeSpanUnit unit, DateTime dateTime, long offset = 0 )
+    {
+        var start = unit switch
+        {
+            TimeSpanUnit.Year => new DateTime( dateTime.Year, 1, 1, 0, 0, 0, dateTime.Kind ),
+            TimeSpanUnit.Semester => new DateTime( dateTime.Year, dateTime.Month > 6 ? 7 : 1, 1, 0, 0, 0, dateTime.Kind ),
+            TimeSpanUnit.Quarter => new DateTime( dateTime.Year, 1 + ((dateTime.Month - 1) / 3) * 3, 1, 0, 0, 0, dateTime.Kind ),
+            TimeSpanUnit.Month => new DateTime( dateTime.Year, dateTime.Month, 1, 0, 0, 0, dateTime.Kind ),
+            TimeSpanUnit.Day => new DateTime( (dateTime.Ticks / TimeSpan.TicksPerDay) * TimeSpan.TicksPerDay, dateTime.Kind ),
+            TimeSpanUnit.Hour => new DateTime( (dateTime.Ticks / TimeSpan.TicksPerHour) * TimeSpan.TicksPerHour, dateTime.Kind ),
+            TimeSpanUnit.Minute => new DateTime( (dateTime.Ticks / TimeSpan.TicksPerMinute) * TimeSpan.TicksPerMinute, dateTime.Kind ),
+            TimeSpanUnit.Second => new DateTime( (dateTime.Ticks / TimeSpan.TicksPerSecond) * TimeSpan.TicksPerSecond, dateTime.Kind ),
+            TimeSpanUnit.Millisecond => new DateTime( (dateTime.Ticks / TimeSpan.TicksPerMillisecond) * TimeSpan.TicksPerMillisecond, dateTime.Kind ),
+            _ => Throw.ArgumentOutOfRangeException<DateTime>( nameof( unit ) )
+        };
+        if( offset == 0 ) return start;
+        checked
+        {
+            switch( unit )
+            {
+                case TimeSpanUnit.Year: return new DateTime( start.Year + (int)offset, 1, 1, 0, 0, 0, dateTime.Kind );
+                case TimeSpanUnit.Semester:
+                    {
+                        var (y, m) = Math.DivRem( (start.Month - 1) + 6 * (int)offset, 12 );
+                        // The sign is carried by the quotient and the remainder.
+                        if( m < 0 )
+                        {
+                            Throw.DebugAssert( y <= 0 );
+                            y = y - 1;
+                            m = -m;
+                        }
+                        return new DateTime( start.Year + y, m + 1, 1, 0, 0, 0, start.Kind );
+                    }
+                case TimeSpanUnit.Quarter:
+                    {
+                        var (y, m) = Math.DivRem( (start.Month - 1) + 3 * (int)offset, 12 );
+                        if( m < 0 )
+                        {
+                            Throw.DebugAssert( y <= 0 );
+                            y = y - 1;
+                            m += 12;
+                        }
+                        return new DateTime( start.Year + y, m + 1, 1, 0, 0, 0, start.Kind );
+                    }
+                case TimeSpanUnit.Month:
+                    {
+                        var (y, m) = Math.DivRem( (start.Month - 1) + (int)offset, 12 );
+                        if( m < 0 )
+                        {
+                            Throw.DebugAssert( y <= 0 );
+                            y = y - 1;
+                            m += 12;
+                        }
+                        return new DateTime( start.Year + y, m + 1, 1, 0, 0, 0, start.Kind );
+                    }
+                case TimeSpanUnit.Day:
+                    {
+                        return new DateTime( start.Ticks + offset * TimeSpan.TicksPerDay, start.Kind );
+                    }
+                case TimeSpanUnit.Hour:
+                    {
+                        return new DateTime( start.Ticks + offset * TimeSpan.TicksPerHour, start.Kind );
+                    }
+                case TimeSpanUnit.Minute:
+                    {
+                        return new DateTime( start.Ticks + offset * TimeSpan.TicksPerMinute, start.Kind );
+                    }
+                case TimeSpanUnit.Second:
+                    {
+                        return new DateTime( start.Ticks + offset * TimeSpan.TicksPerSecond, start.Kind );
+                    }
+                case TimeSpanUnit.Millisecond:
+                    {
+                        return new DateTime( start.Ticks + offset * TimeSpan.TicksPerMillisecond, start.Kind );
+                    }
+                default:
+                    // Will never be here.
+                    return start;
+            };
+        }
+    }
+
+    /// <summary>
+    /// Gets the date that ends this unit for any <paramref name="dateTime"/>.
+    /// <para>
+    /// This is the inclusive end of the range: the start of the next span minus one <see cref="DateTime.Ticks"/>.
+    /// </para>
+    /// </summary>
+    /// <param name="unit">This unit.</param>
+    /// <param name="dateTime">The datetime in this unit.</param>
+    /// <param name="offset">Optional offset of units.</param>
+    /// <returns>The date time that starts the time span unit.</returns>
+    public static DateTime GetInclusiveEnd( this TimeSpanUnit unit, DateTime dateTime, long offset = 0 )
+    {
+        return GetStart( unit, dateTime, offset + 1 ).AddTicks( -1 );
+    }
 
     /// <summary>
     /// Tries to match one of the enum name and forward the <paramref name="head"/> on success.
@@ -121,7 +229,7 @@ public static class TimeSpanUnitExtensions
         {
             value = TimeSpanUnit.Millisecond;
         }
-        else 
+        else
         {
             value = TimeSpanUnit.None;
             if( !head.TryMatch( nameof( TimeSpanUnit.None ), comparison ) ) return false;

@@ -5,6 +5,7 @@ using System;
 namespace CK.Core.Tests
 {
 
+    [TestFixture]
     public class UnitPathPartTests
     {
         [TestCase( TimeSpanUnitPathPart.None, "2024-08-23T16-42-54.374" )]

@@ -1,8 +1,9 @@
 using System;
+using System.Globalization;
 
 namespace CK.Core;
 
-public readonly partial struct WeakTimeSpan
+public readonly partial struct WeakTimeSpan : ISpanParsable<WeakTimeSpan>
 {
     /// <inheritdoc />
     /// <remarks>
@@ -69,7 +70,10 @@ public readonly partial struct WeakTimeSpan
                 }
                 return true;
             }
-            if( s.TryMatch( ':' ) && s.SkipWhiteSpaces() && s.TryMatchInt32( out var count, minValue: 1 ) )
+            if( s.TryMatch( ':' )
+                && s.SkipWhiteSpaces()
+                && long.TryParse( s, CultureInfo.InvariantCulture, out long count )
+                && count > 0 )
             {
                 result = new WeakTimeSpan( unit, count );
                 return true;
