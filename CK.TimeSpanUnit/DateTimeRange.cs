@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Text;
 
 namespace CK.Core;
@@ -14,7 +16,10 @@ namespace CK.Core;
 /// A <c>default</c> value of this type is the only invalid value of this type.
 /// </para>
 /// </summary>
-public readonly struct DateTimeRange
+public readonly struct DateTimeRange : IComparable<DateTimeRange>,
+                                       IComparisonOperators<DateTimeRange, DateTimeRange, bool>,
+                                       IEquatable<DateTimeRange>,
+                                       IEqualityOperators<DateTimeRange, DateTimeRange, bool>
 {
     readonly DateTime _start;
     readonly WeakTimeSpan _span;
@@ -48,6 +53,29 @@ public readonly struct DateTimeRange
     /// </para>
     /// </summary>
     public DateTime End => _span.Unit.GetStart( _start, _span.Count );
+
+    /// <summary>
+    /// Compares this time range with the other one. <see cref="Span"/> comes first, then <see cref="Start"/>
+    /// is used.
+    /// </summary>
+    /// <param name="other">The other time range.</param>
+    /// <returns>Standard comparison value. See <see cref="IComparable{T}.CompareTo(T?)"/>.</returns>
+    public int CompareTo( DateTimeRange other )
+    {
+        int cmp = Span.CompareTo( other.Span );
+        return cmp == 0 ? Start.CompareTo( other.Start ) : cmp;
+    }
+
+    /// <summary>
+    /// Strict equality (<see cref="Span"/> and <see cref="Start"/> must be the same).
+    /// </summary>
+    /// <param name="other">The other time span.</param>
+    /// <returns>True if this span is equal to the other one; otherwise, false.</returns>
+    public bool Equals( DateTimeRange other ) => Span == other.Span && Start == other.Start;
+
+    public override bool Equals( [NotNullWhen( true )] object? obj ) => obj is DateTimeRange other && Equals( other );
+
+    public override int GetHashCode() => HashCode.Combine( Span, Start );
 
     /// <summary>
     /// Gets whether a <paramref name="dateTime"/> is in this range.
@@ -127,4 +155,16 @@ public readonly struct DateTimeRange
         b.Append( '[' );
         return b;
     }
+
+    public static bool operator ==( DateTimeRange left, DateTimeRange right ) => left.Equals( right );
+
+    public static bool operator !=( DateTimeRange left, DateTimeRange right ) => !(left == right);
+
+    public static bool operator <( DateTimeRange left, DateTimeRange right ) => left.CompareTo( right ) < 0;
+
+    public static bool operator <=( DateTimeRange left, DateTimeRange right ) => left.CompareTo( right ) <= 0;
+
+    public static bool operator >( DateTimeRange left, DateTimeRange right ) => left.CompareTo( right ) > 0;
+
+    public static bool operator >=( DateTimeRange left, DateTimeRange right ) => left.CompareTo( right ) >= 0;
 }
