@@ -66,7 +66,7 @@ public readonly partial struct WeakTimeSpan : ISpanParsable<WeakTimeSpan>
                 if( s.TryMatch( ':' ) )
                 {
                     s.SkipWhiteSpaces();
-                    return s.Length == 0 || (s.TryMatchInt32( out var ignored ) && ignored >= 0);
+                    return s.Length == 0 || (s.TryMatchInteger( out int ignored ) && ignored >= 0);
                 }
                 return true;
             }

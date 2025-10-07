@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -12,7 +13,11 @@ namespace CK.Core;
 /// It is NOT (and cannot be converted to) an actual <see cref="TimeSpan"/>. 
 /// </para>
 /// </summary>
-public readonly partial struct WeakTimeSpan : IMultiplyOperators<WeakTimeSpan,long,WeakTimeSpan>
+public readonly partial struct WeakTimeSpan : IMultiplyOperators<WeakTimeSpan,long,WeakTimeSpan>,
+                                              IComparable<WeakTimeSpan>,
+                                              IComparisonOperators<WeakTimeSpan,WeakTimeSpan,bool>,
+                                              IEquatable<WeakTimeSpan>,
+                                              IEqualityOperators<WeakTimeSpan, WeakTimeSpan, bool>
 {
     const ulong _countMask = (1UL << 56) - 1;
     readonly ulong _value;
@@ -61,6 +66,30 @@ public readonly partial struct WeakTimeSpan : IMultiplyOperators<WeakTimeSpan,lo
     public bool IsValid => _value != 0;
 
     /// <summary>
+    /// Compares this time span with the other one. <see cref="Unit"/> comes first in reversed order
+    /// (<see cref="TimeSpanUnit.Millisecond"/> is before <see cref="TimeSpanUnit.Second"/>), then
+    /// the <see cref="Count"/> is used.
+    /// </summary>
+    /// <param name="other">The other time span.</param>
+    /// <returns>Standard comparison value. See <see cref="IComparable{T}.CompareTo(T?)"/>.</returns>
+    public int CompareTo( WeakTimeSpan other )
+    {
+        int cmp = other.Unit.CompareTo(Unit);
+        return cmp == 0 ? Count.CompareTo( other.Count ) : cmp;
+    }
+
+    /// <summary>
+    /// Strict equality (<see cref="Unit"/> and <see cref="Count"/> must be the same).
+    /// </summary>
+    /// <param name="other">The other time span.</param>
+    /// <returns>True if this span is equal to the other one; otherwise, false.</returns>
+    public bool Equals( WeakTimeSpan other ) => _value == other._value;
+
+    public override bool Equals( [NotNullWhen( true )] object? obj ) => obj is WeakTimeSpan other && Equals( other );
+
+    public override int GetHashCode() => _value.GetHashCode();
+
+    /// <summary>
     /// Returns a span for wich <see cref="Count"/> is multplied by <paramref name="factor"/>.
     /// <para>
     /// <paramref name="factor"/> must be positive (0 is invalid and will throw an <see cref="ArgumentException"/>).
@@ -77,7 +106,19 @@ public readonly partial struct WeakTimeSpan : IMultiplyOperators<WeakTimeSpan,lo
     /// <param name="factor">The multipicative factor.</param>
     /// <returns>The resulting span.</returns>
     public static WeakTimeSpan operator *( WeakTimeSpan left, long factor ) => left.Multiply( factor );
-    
+
+    public static bool operator ==( WeakTimeSpan left, WeakTimeSpan right ) => left.Equals( right );
+
+    public static bool operator !=( WeakTimeSpan left, WeakTimeSpan right ) => !left.Equals( right );
+
+    public static bool operator <( WeakTimeSpan left, WeakTimeSpan right ) => left.CompareTo( right ) < 0;
+
+    public static bool operator <=( WeakTimeSpan left, WeakTimeSpan right ) => left.CompareTo( right ) <= 0;
+
+    public static bool operator >( WeakTimeSpan left, WeakTimeSpan right ) => left.CompareTo( right ) > 0;
+
+    public static bool operator >=( WeakTimeSpan left, WeakTimeSpan right ) => left.CompareTo( right ) >= 0;
+
     /// <summary>
     /// Tries to normalize this span to a more general one if possible: "Second:3600" returns "Hour:1" or
     /// "Quarter:8" returns "Year:2".
@@ -458,5 +499,4 @@ public readonly partial struct WeakTimeSpan : IMultiplyOperators<WeakTimeSpan,lo
         unit = Unit;
         count = Count;
     }
-
 }
