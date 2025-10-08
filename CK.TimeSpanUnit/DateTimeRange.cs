@@ -120,6 +120,31 @@ public readonly struct DateTimeRange : IComparable<DateTimeRange>,
     }
 
     /// <summary>
+    /// Get a next range. This throws if the resulting range cannot be computed.
+    /// </summary>
+    /// <param name="offset">Positive number of ranges to shift forward.</param>
+    /// <returns>The previous range.</returns>
+    public DateTimeRange GetNext( long offset = 1 )
+    {
+        Throw.CheckArgument( offset >= 0 );
+        if( offset == 0 ) return this;
+        return _span.GetDateTimeRange( Index + offset );
+    }
+
+    /// <summary>
+    /// Get a previous range. This never overflows: the very first range is returned (in year 1).
+    /// </summary>
+    /// <param name="offset">Positive number of ranges to shift backward.</param>
+    /// <returns>The previous range.</returns>
+    public DateTimeRange GetPrevious( long offset = 1 )
+    {
+        Throw.CheckArgument( offset >= 0 );
+        if( offset == 0 ) return this;
+        long i = Math.Max( Index - offset, 0 );
+        return _span.GetDateTimeRange( i );
+    }
+
+    /// <summary>
     /// Overridden to return the "[start,end[".
     /// </summary>
     /// <returns>A readable string.</returns>
